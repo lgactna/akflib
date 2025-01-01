@@ -1,0 +1,10 @@
+# Functional
+pycryptodomex
+
+# Linting
+black
+mypy
+flake8
+flake8-bugbear
+pre-commit
+tox
