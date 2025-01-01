@@ -1,5 +1,5 @@
 [project]
-name = "template"
+name = "akf"
 version = "0.0.1"
 description = "hello world"
 requires-python = ">=3.11"
@@ -12,12 +12,10 @@ dependencies = [
 # pip install template[dev]
 dev = [
   "black",
-  "celery-types",
   "flake8",
   "flake8-bugbear",
   "pre-commit",
   "pytest",
-  "tox",
 ]
 # all taken from Pydantic's pyproject.toml
 # docs = [
