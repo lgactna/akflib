@@ -38,6 +38,29 @@ class MainService(AService, BService):
         common_methods -= {"exposed_get_service_aliases", "exposed_get_service_name"}
 
         # Exclude methods that are not services (requires the exposed_ convention)
+        #
+        # it is also possible to test if a method was decorated with a particular 
+        # decorator as described here:
+        """
+        from some_library import external_decorator
+
+        def my_decorator(func):
+            @external_decorator
+            def wrapper(*args, **kwargs):
+                return func(*args, **kwargs)
+            wrapper._is_my_decorator = True
+            return wrapper
+
+        @my_decorator
+        def my_function():
+            pass
+
+        # Test if the function was decorated
+        if hasattr(my_function, '_is_my_decorator'):
+            print("Function is decorated")
+        else:
+            print("Function is not decorated")
+        """
         common_methods = {
             method for method in common_methods if method.startswith("exposed_")
         }
@@ -48,7 +71,9 @@ class MainService(AService, BService):
 
 if __name__ == "__main__":
     # Check for exposed name conflicts (a runtime process that can probably
-    # also be delegated to a linter, or perhaps our own pre-commit hook)
+    # also be delegated to a linter, or perhaps our own pre-commit hook) -- this
+    # fixes the disadvantage of not having a "built-in" method to check for
+    # shadowed functions
     MainService.check_method_conflicts()
 
     from rpyc.utils.server import ThreadedServer
