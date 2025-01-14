@@ -11,7 +11,7 @@ dependencies = [
     { name = "virtualbox" },
 ]
 
-[package.optional-dependencies]
+[package.dev-dependencies]
 dev = [
     { name = "black" },
     { name = "flake8" },
@@ -22,14 +22,18 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "black", marker = "extra == 'dev'" },
-    { name = "flake8", marker = "extra == 'dev'" },
-    { name = "flake8-bugbear", marker = "extra == 'dev'" },
-    { name = "pre-commit", marker = "extra == 'dev'" },
     { name = "pycryptodomex", specifier = ">=3.21.0" },
-    { name = "pytest", marker = "extra == 'dev'" },
     { name = "rpyc", specifier = ">=6.0.1" },
     { name = "virtualbox", specifier = ">=2.1.1" },
+]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "black", specifier = ">=24.10.0" },
+    { name = "flake8", specifier = ">=7.1.1" },
+    { name = "flake8-bugbear", specifier = ">=24.12.12" },
+    { name = "pre-commit", specifier = ">=4.0.1" },
+    { name = "pytest", specifier = ">=8.3.4" },
 ]
 
 [[package]]
