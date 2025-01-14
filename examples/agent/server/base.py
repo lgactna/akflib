@@ -78,6 +78,7 @@ if __name__ == "__main__":
 
     from rpyc.utils.server import ThreadedServer
 
-    logger.info("Starting server on port 18861")
-    t = ThreadedServer(MainService, port=18861)
+    # 0 == random port
+    t = ThreadedServer(MainService, port=0)
+    logger.info(f"Starting server on port {t.port}")
     t.start()
