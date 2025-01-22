@@ -2,20 +2,20 @@ import rpyc
 from rpyc.core.stream import SocketStream
 
 
-class AService(rpyc.Service):
-    def exposed_a(self, arg1: str):
+class AService(rpyc.Service):  # type: ignore[misc]
+    def exposed_a(self, arg1: str) -> str:
         return "a" + arg1
 
-    def a(self, rpyc_conn: SocketStream, arg1: str):
+    def a(self, rpyc_conn: SocketStream, arg1: str) -> str:
         # various things can happen here, like logging and argument manipulation
         # before we actually invoke the remote call
-        return rpyc_conn.root.a(arg1)
+        return rpyc_conn.root.a(arg1)  # type: ignore[no-any-return]
 
-    def exposed_b(self):
+    def exposed_b(self) -> str:
         return "b"
 
-    def b(self, rpyc_conn: SocketStream):
-        return rpyc_conn.root.b()
+    def b(self, rpyc_conn: SocketStream) -> str:
+        return rpyc_conn.root.b()  # type: ignore[no-any-return]
 
 
 # advantage: the "API" part can be separated from the same module where the actual
@@ -31,8 +31,8 @@ class AService(rpyc.Service):
 # first imported class will be the only one visible. i dont' know if there's a way
 # to assert that this won't happen at runtime.
 class AServiceAPI:
-    def a(self, rpyc_conn: SocketStream, arg1: str):
-        return rpyc_conn.root.a(arg1)
+    def a(self, rpyc_conn: SocketStream, arg1: str) -> str:
+        return rpyc_conn.root.a(arg1)  # type: ignore[no-any-return]
 
-    def b(self, rpyc_conn: SocketStream):
-        return rpyc_conn.root.b()
+    def b(self, rpyc_conn: SocketStream) -> str:
+        return rpyc_conn.root.b()  # type: ignore[no-any-return]

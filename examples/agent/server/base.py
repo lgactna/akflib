@@ -27,7 +27,7 @@ class MainService(AService, BService):
 
     # Something that 4o spat out
     @classmethod
-    def check_method_conflicts(cls):
+    def check_method_conflicts(cls) -> None:
         parent_classes = cls.__bases__
         method_sets = {class_obj: set(dir(class_obj)) for class_obj in parent_classes}
 
@@ -39,7 +39,7 @@ class MainService(AService, BService):
 
         # Exclude methods that are not services (requires the exposed_ convention)
         #
-        # it is also possible to test if a method was decorated with a particular 
+        # it is also possible to test if a method was decorated with a particular
         # decorator as described here:
         """
         from some_library import external_decorator
