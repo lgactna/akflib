@@ -72,9 +72,12 @@ class HypervisorABC(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def execute_process(self, *args: Any, **kwargs: Any) -> bool:
+    def execute_process(self, *args: Any, **kwargs: Any) -> Any:
         """
         Execute a process on the virtual machine.
+
+        It is up to the hypervisor to implement this as either blocking or
+        non-blocking.
         """
         pass
 
