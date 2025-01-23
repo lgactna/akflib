@@ -1,0 +1,3 @@
+"""
+Interact with Microsoft Edge.
+"""

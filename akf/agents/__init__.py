@@ -1,3 +1,3 @@
 """
-Root for all installable agents.
+Root for all agent APIs.
 """
