@@ -28,6 +28,11 @@ class HypervisorABC(abc.ABC):
     TODO: should the hypervisor be independent of the concept of a machine?
     i.e. should this class just be a bunch of static methods, and accept a Machine
     instance or something similar?
+
+    TODO: convert all the *args and **kwargs into actual, coherent arguments so
+    LSP actually holds and we aren't just cheating
+
+    TODO: snapshot management, e.g. create_snapshot, restore_snapshot, delete_snapshot
     """
 
     @abc.abstractmethod
