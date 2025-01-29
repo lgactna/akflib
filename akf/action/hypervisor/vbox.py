@@ -5,7 +5,7 @@ VirtualBox hypervisor bindings for AKF.
 import datetime
 import logging
 from enum import Enum
-from typing import Any, Optional
+from typing import Any
 
 import virtualbox
 import virtualbox.library as vboxlib
@@ -54,7 +54,7 @@ class VBoxHypervisor(HypervisorABC):
     requiring Guest Additions is attempted without them, a RuntimeError is raised.
     """
 
-    def __init__(self, name_or_id: str, bundle: Optional[Bundle] = None) -> None:
+    def __init__(self, name_or_id: str, bundle: Bundle | None = None) -> None:
         """
         Bind this hypervisor instance to a VirtualBox machine by name or UUID.
 
@@ -123,7 +123,7 @@ class VBoxHypervisor(HypervisorABC):
     def start_vm(
         self,
         frontend: VBoxFrontendEnum,
-        environment_changes: Optional[list[str]] = None,
+        environment_changes: list[str] | None = None,
     ) -> bool:
         """
         Start the virtual machine.
@@ -190,10 +190,10 @@ class VBoxHypervisor(HypervisorABC):
     def execute_process(
         self,
         executable: str,
-        arguments: Optional[list[str]] = None,
-        cwd: Optional[str] = None,
-        environment_changes: Optional[list[str]] = None,
-        flags: Optional[list[vboxlib.ProcessCreateFlag]] = None,
+        arguments: list[str] | None = None,
+        cwd: str | None = None,
+        environment_changes: list[str] | None = None,
+        flags: list[vboxlib.ProcessCreateFlag] | None = None,
     ) -> Any:
         """
         Execute a process through VirtualBox's ProcessCreateEx.
