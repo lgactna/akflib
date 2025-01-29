@@ -10,10 +10,10 @@ import rpyc
 
 logger = logging.getLogger(__name__)
 
-T = TypeVar("T", bound="RPyCServiceAPI")
+T = TypeVar("T", bound="AKFServiceAPI")
 
 
-class RPyCServiceAPI:
+class AKFServiceAPI:
     def __init__(self, host: str, port: int) -> None:
         """
         Initialize the "API" with an RPyC connection to the service.

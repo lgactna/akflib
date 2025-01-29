@@ -11,7 +11,7 @@ import virtualbox
 import virtualbox.library as vboxlib
 from caselib.uco.core import Bundle
 
-from akf.action.hypervisor.base import HypervisorABC
+from akflib.core.hypervisor.base import HypervisorABC
 
 logger = logging.getLogger(__name__)
 

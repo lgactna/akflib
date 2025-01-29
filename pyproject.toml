@@ -4,13 +4,12 @@ version = "0.0.1"
 description = "the automated kinetic framework"
 requires-python = ">=3.11"
 
-# TODO: if we're going to use a symmetric codebase for the agent, it would be 
-# easiest to just have a distinct dependency group for each supported OS, 
-# containing only the required dependencies for that platform.
+# Note that this does not include installing the VirtualBox SDK. This must be
+# installed separately as described in https://github.com/sethmlarson/virtualbox-python.
+# If done in a virtual environment, enable the virtual environment before navigating
+# to the directory containing the SDK and running the install script.
 dependencies = [
-  "case-uco-lib",
-  "pycryptodomex>=3.21.0",
-  "pytest-playwright>=0.6.2",
+  "caselib",
   "rpyc>=6.0.1",
   "virtualbox>=2.1.1",
 ]
@@ -67,6 +66,6 @@ strict_optional = true
 profile = "black"
 
 [tool.uv.sources]
-case-uco-lib = { git = "https://github.com/lgactna/CASE-pydantic" }
+caselib = { git = "https://github.com/lgactna/CASE-pydantic.git" }
 
 
