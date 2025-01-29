@@ -1,5 +1,5 @@
 [project]
-name = "akf"
+name = "akflib"
 version = "0.0.1"
 description = "the automated kinetic framework"
 requires-python = ">=3.11"
