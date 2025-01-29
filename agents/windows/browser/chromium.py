@@ -19,7 +19,8 @@ class ChromiumService(rpyc.Service):  # type: ignore[misc]
 
     Use the `EdgeServiceAPI` class to connect to and interact with this service.
 
-    TODO: can't this just be generalized to allow for any browser?
+    TODO: is it possible to use RPyC's zero-deploy to do this? Would require
+    SSH on windows...
     """
 
     def on_connect(self, conn: rpyc.Connection) -> None:
@@ -87,10 +88,23 @@ if __name__ == "__main__":
     # TODO: should this actually be OneShotServer instead? again, this is based
     # on whether or not it makes sense to have a single dispatch server, as well
     # as how such a server would work
-    from rpyc.utils.server import ThreadedServer
+    
+    # from rpyc.utils.server import ThreadedServer
 
-    t = ThreadedServer(
-        ChromiumService, port=18861, protocol_config={"allow_all_attrs": True}
-    )
-    print("Starting Chromium service on port 18861")
-    t.start()
+    # t = ThreadedServer(
+    #     ChromiumService, port=18861, protocol_config={"allow_all_attrs": True}
+    # )
+    # print("Starting Chromium service on port 18861")
+    # t.start()
+    
+    from rpyc.utils.zerodeploy import DeployedServer
+    # from plumbum import SshMachine
+    from plumbum.machines.paramiko_machine import ParamikoMachine
+    rem = ParamikoMachine("192.168.56.102", user="user", password="user")    
+    # machine = SshMachine("192.168.56.102", user="user")
+    server = DeployedServer(rem)
+    
+    conn1 = server.classic_connect()
+    print(conn1.modules.sys.platform)
+    
+    

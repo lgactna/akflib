@@ -4,6 +4,9 @@ version = "0.0.1"
 description = "the automated kinetic framework"
 requires-python = ">=3.11"
 
+# TODO: if we're going to use a symmetric codebase for the agent, it would be 
+# easiest to just have a distinct dependency group for each supported OS, 
+# containing only the required dependencies for that platform.
 dependencies = [
   "case-uco-lib",
   "pycryptodomex>=3.21.0",
