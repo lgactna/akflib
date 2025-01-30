@@ -230,9 +230,23 @@ class VBoxHypervisor(HypervisorABC):
         raise NotImplementedError
 
     def attach_drive(self, *args, **kwargs) -> bool:
+        # ~ attach_usb_device
         raise NotImplementedError
 
     def detach_drive(self, *args, **kwargs) -> bool:
+        # ~ detach_usb_device
+        raise NotImplementedError
+
+    def mount_shared_directory(self, *args, **kwargs) -> bool:
+        # ~create_shared_directory
+        raise NotImplementedError
+    
+    def verify_shared_directory(self, *args, **kwargs) -> bool:
+        # ~validate_shared_directory
+        raise NotImplementedError
+    
+    def unmount_shared_directory(self, *args, **kwargs) -> bool:
+        # ~remove_shared_directory
         raise NotImplementedError
 
     def set_bios_time(self, time: datetime.datetime) -> bool:
