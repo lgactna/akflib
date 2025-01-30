@@ -240,11 +240,11 @@ class VBoxHypervisor(HypervisorABC):
     def mount_shared_directory(self, *args, **kwargs) -> bool:
         # ~create_shared_directory
         raise NotImplementedError
-    
+
     def verify_shared_directory(self, *args, **kwargs) -> bool:
         # ~validate_shared_directory
         raise NotImplementedError
-    
+
     def unmount_shared_directory(self, *args, **kwargs) -> bool:
         # ~remove_shared_directory
         raise NotImplementedError

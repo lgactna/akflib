@@ -1,6 +1,6 @@
 import logging
-import time
 import os
+import time
 from pathlib import Path
 
 from playwright.sync_api import Playwright, sync_playwright
@@ -63,6 +63,7 @@ def run(playwright: Playwright) -> None:
 
     browser.close()
 
+
 def get_appdata_local_path() -> Path:
     """
     Get the path to the AppData directory for the current user.
@@ -79,13 +80,13 @@ def get_appdata_local_path() -> Path:
 if __name__ == "__main__":
     # with sync_playwright() as playwright:
     #     run(playwright)
-    
+
     playwright = sync_playwright().start()
     browser = None
-    
+
     profile = "Default"
-    profile_path = get_appdata_local_path() / "Microsoft" / "Edge" / "User Data"    
-    
+    profile_path = get_appdata_local_path() / "Microsoft" / "Edge" / "User Data"
+
     chromium = playwright.chromium
     browser = chromium.launch_persistent_context(
         headless=False,
