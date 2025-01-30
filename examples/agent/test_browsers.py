@@ -1,5 +1,7 @@
 import logging
 import time
+import os
+from pathlib import Path
 
 from playwright.sync_api import Playwright, sync_playwright
 
@@ -61,6 +63,33 @@ def run(playwright: Playwright) -> None:
 
     browser.close()
 
+def get_appdata_local_path() -> Path:
+    """
+    Get the path to the AppData directory for the current user.
+    """
+    appdata_dir = os.getenv("LOCALAPPDATA")
+    assert appdata_dir is not None
 
-with sync_playwright() as playwright:
-    run(playwright)
+    if appdata_dir is None:
+        raise Exception("Could not find the LOCALAPPDATA environment variable")
+
+    return Path(appdata_dir).resolve()
+
+
+if __name__ == "__main__":
+    # with sync_playwright() as playwright:
+    #     run(playwright)
+    
+    playwright = sync_playwright().start()
+    browser = None
+    
+    profile = "Default"
+    profile_path = get_appdata_local_path() / "Microsoft" / "Edge" / "User Data"    
+    
+    chromium = playwright.chromium
+    browser = chromium.launch_persistent_context(
+        headless=False,
+        user_data_dir=profile_path,
+        channel="msedge",
+        args=[f"--profile-directory={profile}"],
+    )
