@@ -73,7 +73,7 @@ def execute_module(
     module.execute(args_model, config_model, state)
 
 
-def generate_code(
+def generate_code_from_module(
     module: AKFModule[Any, Any],
     args: dict[str, Any],
     config: dict[str, Any],
@@ -122,7 +122,7 @@ if __name__ == "__main__":
     # Step 2: generate the code for each action
     for action in scenario.actions:
         module = modules[action.module]
-        result += generate_code(
+        result += generate_code_from_module(
             module, action.args, scenario.config | action.config, state
         )
 
