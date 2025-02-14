@@ -6,6 +6,26 @@ from caselib.uco.core import Bundle
 from pydantic import BaseModel
 
 
+class AKFModuleArgs(abc.ABC, BaseModel):
+    """
+    Root for any module argument models.
+    """
+
+    pass
+
+
+class AKFModuleConfig(abc.ABC, BaseModel):
+    """
+    Root for any module configuration models.
+    """
+
+    pass
+
+
+ArgsType = TypeVar("ArgsType", bound=AKFModuleArgs)
+ConfigType = TypeVar("ConfigType", bound=AKFModuleConfig)
+
+
 class AKFAction(BaseModel):
     """
     The definition for a single action as part of a larger scenario.
@@ -27,6 +47,8 @@ class AKFAction(BaseModel):
     # The arguments to pass to the module. These will eventually be used to
     # instantiate the module's argument model, which is also a Pydantic BaseModel.
     args: dict[str, Any] = {}
+
+    # TODO: have module resolution logic here, as well as all the typevar'd stuff?
 
 
 class AKFScenario(BaseModel):
@@ -67,26 +89,6 @@ class AKFScenario(BaseModel):
     # The list of actions to take in this scenario. Each action is a dictionary,
     # which is in turn converted to an AKFAction.
     actions: list[AKFAction] = []
-
-
-class AKFModuleArgs(abc.ABC, BaseModel):
-    """
-    Root for any module argument models.
-    """
-
-    pass
-
-
-class AKFModuleConfig(abc.ABC, BaseModel):
-    """
-    Root for any module configuration models.
-    """
-
-    pass
-
-
-ArgsType = TypeVar("ArgsType", bound=AKFModuleArgs)
-ConfigType = TypeVar("ConfigType", bound=AKFModuleConfig)
 
 
 class AKFModule(abc.ABC, Generic[ArgsType, ConfigType]):
