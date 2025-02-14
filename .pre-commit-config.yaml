@@ -10,6 +10,7 @@ repos:
       args: [--strict, --warn-unused-configs, --ignore-missing-imports]
       additional_dependencies:
         - pydantic
+        - click
 - repo: https://github.com/pycqa/flake8
   rev: 5.0.4
   hooks:

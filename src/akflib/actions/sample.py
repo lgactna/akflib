@@ -40,4 +40,4 @@ class SampleModule(AKFModule[SampleModuleArgs, SampleModuleConfig]):
         state: dict[str, Any],
         bundle: Optional[Bundle] = None,
     ) -> None:
-        print(f'I choose {random.choice((args.arg1, args.arg2))}')
+        print(f"I choose {random.choice((args.arg1, args.arg2))}")

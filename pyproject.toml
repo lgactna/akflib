@@ -10,6 +10,7 @@ requires-python = ">=3.11"
 # to the directory containing the SDK and running the install script.
 dependencies = [
   "caselib",
+  "click>=8.1.8",
   "pydantic>=2.10.6",
   "pydantic-yaml>=1.4.0",
   "rpyc>=6.0.1",
@@ -26,34 +27,12 @@ dev = [
     "pytest>=8.3.4",
 ]
 
-# [project.optional-dependencies]
-# pip install template[dev]
-# dev = [
-#   "black",
-#   "flake8",
-#   "flake8-bugbear",
-#   "pre-commit",
-#   "pytest",
-# ]
-# all taken from Pydantic's pyproject.toml
-# docs = [
-#     "autoflake",
-#     "mkdocs",
-#     "mkdocs-awesome-pages-plugin",
-#     "mkdocs-exclude",
-#     "mkdocs-gen-files",
-#     "mkdocs-glightbox",
-#     "mkdocs-material[imaging]",
-#     "mkdocs-redirects",
-#     "mkdocstrings-python",
-#     "tomli",
-#     "pyupgrade",
-#     "mike",
-#     "requests",
-# ]
+[project.scripts]
+akf-translate = "akflib.translation:main"
 
-#[tool.setuptools]
-#packages = ["template"]
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
 
 [tool.flake8]
 extend_ignore = [
