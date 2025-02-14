@@ -1,0 +1,12 @@
+name: sample scenario
+description: sample scenario
+author: lgactna
+seed: "0"
+libraries:
+  - actions.sample
+actions:
+  - name: Run the sample action
+    module: actions.sample.SampleModule
+    args:
+      arg1: "value1"
+      arg2: "value2"
