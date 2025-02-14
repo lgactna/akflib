@@ -72,6 +72,22 @@ def execute_module(
     # Execute the module
     module.execute(args_model, config_model, state)
 
+def generate_code(
+    module: AKFModule[Any, Any],
+    args: dict[str, Any],
+    config: dict[str, Any],
+    state: dict[str, Any],
+) -> str:
+    """
+    Generate code for a module with the given arguments and configuration.
+    """
+    # Build the module's arguments and configuration
+    args_model = module.arg_model.model_validate(args)
+    config_model = module.config_model.model_validate(config)
+
+    # Generate code
+    return module.generate_code(args_model, config_model, state)
+
 
 if __name__ == "__main__":
     # Load sample.yaml
@@ -85,6 +101,36 @@ if __name__ == "__main__":
     modules = get_akf_modules(module_paths)
 
     # When executing modules...
+    state = {}
     for action in scenario.actions:
         module = modules[action.module]
-        execute_module(module, action.args, scenario.config | action.config, {})
+        execute_module(
+            module, 
+            action.args, 
+            scenario.config | action.config, 
+            state
+        )
+        
+    # And when generating code...
+    state = {}
+    result = ""
+    # Step 1: generate the import statements
+    # Collect the dependencies of all the modules
+    dependencies = set()    
+    for action in scenario.actions:
+        module = modules[action.module]
+        dependencies.update(module.dependencies)
+    
+    result += generate_import_statements(dependencies) + "\n\n"
+    
+    # Step 2: generate the code for each action
+    for action in scenario.actions:
+        module = modules[action.module]
+        result += generate_code(
+            module, 
+            action.args, 
+            scenario.config | action.config, 
+            state
+        )
+        
+    print(result)
