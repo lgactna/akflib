@@ -54,7 +54,7 @@ class VBoxHypervisor(HypervisorABC):
     requiring Guest Additions is attempted without them, a RuntimeError is raised.
     """
 
-    def __init__(self, name_or_id: str, bundle: Bundle | None = None) -> None:
+    def __init__(self, name_or_id: str, case_bundle: Bundle | None = None) -> None:
         """
         Bind this hypervisor instance to a VirtualBox machine by name or UUID.
 
@@ -63,7 +63,7 @@ class VBoxHypervisor(HypervisorABC):
         This *does not* lock the session.
         """
         # Assign CASE bundle
-        self.case_bundle = bundle
+        self.case_bundle = case_bundle
 
         # Get handle to machine, create new session
         vbox = virtualbox.VirtualBox()
