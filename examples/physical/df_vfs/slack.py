@@ -29,11 +29,11 @@ from dfvfs.volume import tsk_volume_system
 # and give you an OSPathSpec that just points to your own filesystem.
 
 # source_path = "example.iso"
-source_path = "C:\\Users\\Kisun\\Downloads\\img.raw"
+source_path = "C:\\Users\\Kisun\\Downloads\\decrypted.iso"
 # source_path = "C:\\Users\\Kisun\\Downloads\\img.vmdk"
 
 # internal_path = "akflib/actions/sample.py"
-internal_path = "vboxpostinstall.log"
+internal_path = "Users\\user\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\Startup\\agent.exe"
 
 # Note a few things - the path has to be correct for the underlying filesystem.
 # For NTFS, it doesn't have a leading slash. Additionally, for NTFS, it cannot

@@ -1,25 +1,6 @@
-"""
-- Is it possible to use the `pytsk` library to analyze an existing filesystem
-  (such as an ISO, raw disk image, or virtual hard drive) and determine the
-  slack space a file at a known path on the filesystem, and if so, how?
-  Furthermore, can the location of this slack space be determined so that a
-  direct edit of the relevant bytes can be performed?
-  
-- Suppose that I am only interested in identifying the physical offset of a
-  file's clusters, as well as determining if a file has any slack space.
-  How might I achieve that using the pytsk library? Please provide a Python
-  script in as much detail as possible.
-  
-- Can you modify this script to indicate the expected physical offset of the 
-  beginning of slack space for the file as part of `print_file_runs()`?
-
-"""
-
 import sys
 from pathlib import Path
-
 import pytsk3
-
 
 def print_file_runs(fs, file_obj):
     """
@@ -29,11 +10,14 @@ def print_file_runs(fs, file_obj):
     """
     fs_block_size = fs.info.block_size
     runs_info = []
+    
+    # tsk_fs_file.meta -> tsk_fs_meta.attr -> tsk_fs_attrlist.head
+    # -> tsk_fs_attr.run -> tsk_fs_attr_run.addr, len, offset
+    # https://sleuthkit.org/sleuthkit/docs/api-docs/4.10.0/structTSK__FS__ATTR__RUN.html
 
-    # Gather info about each data attribute's runs
     for attr in file_obj:
-        # Data attributes are typically TSK_FS_ATTR_TYPE_DEFAULT or
-        # TSK_FS_ATTR_TYPE_NTFS_DATA (128) on NTFS.
+        # On NTFS, data attributes are often TSK_FS_ATTR_TYPE_NTFS_DATA (128);
+        # for other FS, TSK_FS_ATTR_TYPE_DEFAULT may apply.
         if (
             attr.info.type == pytsk3.TSK_FS_ATTR_TYPE_DEFAULT
             or attr.info.type == pytsk3.TSK_FS_ATTR_TYPE_NTFS_DATA
@@ -44,7 +28,9 @@ def print_file_runs(fs, file_obj):
                     physical_length_bytes = run.len * fs_block_size
                     runs_info.append(
                         {
-                            "run_offset_in_file": run.offset,
+                            # This one is incorrect, run.offset is also in
+                            # block size, not bytes as implied here
+                            "run_offset_in_file": run.offset * fs_block_size,
                             "physical_offset": physical_offset_bytes,
                             "physical_len": physical_length_bytes,
                         }
@@ -65,17 +51,9 @@ def print_file_runs(fs, file_obj):
         print("\nNo meta information for this file.")
         return
 
-    # Compare actual file size to allocated size
     actual_size = meta.size
-
-    # "Some filesystems do not expose a separate field for allocated size..."
-    # https://sleuthkit.org/sleuthkit/docs/api-docs/4.10.0/structTSK__FS__META.html
-    # does not indicate that allocsize exists (including for any filesystem-specific
-    # unions.)
-    #
-    # allocated_size = meta.allocsize if meta.allocsize > 0 else sum(r['physical_len'] for r in runs_info)
-
     allocated_size = sum(r["physical_len"] for r in runs_info)
+
     print(f"\nActual size: {actual_size} bytes")
     print(f"Allocated size: {allocated_size} bytes")
 
@@ -83,22 +61,19 @@ def print_file_runs(fs, file_obj):
         print("No slack space.")
         return
 
-    # File has slack space. Figure out where it starts.
     slack_size = allocated_size - actual_size
     print(f"Slack space: {slack_size} bytes")
 
-    # Locate which run contains the last used byte of the file
-    file_end = actual_size  # first byte after the file's data is actual_size
+    # Identify where slack begins in the last run containing file data
+    file_end = actual_size
     for info in reversed(runs_info):
         start_of_run = info["run_offset_in_file"]
         end_of_run = start_of_run + info["physical_len"]
         if file_end > start_of_run:
-            # The file's last data byte is in this run (or beyond if multiple runs).
             used_in_this_run = min(file_end, end_of_run) - start_of_run
             slack_begins_within_run = info["physical_offset"] + used_in_this_run
             print(f"Slack begins at physical offset: {slack_begins_within_run}")
             break
-
 
 def find_file_in_fs(fs, path_to_file):
     """
@@ -111,29 +86,49 @@ def find_file_in_fs(fs, path_to_file):
         print(f"Could not find or open file: {path_to_file}")
         sys.exit(1)
 
-
 def main(image_path: Path, file_path: Path):
     """
-    1. Opens the disk image using pytsk3.Img_Info.
-    2. Initializes a filesystem object (pytsk3.FS_Info).
-    3. Locates the file by path.
-    4. Prints out run information and detects slack.
+    1. Opens the disk/ISO image using pytsk3.Img_Info.
+    2. Enumerates partitions via pytsk3.Volume_Info and prompts user to select one.
+    3. Creates a pytsk3.FS_Info for the selected partition.
+    4. Locates the file by path and prints out run/slack info.
     """
-    # Open the disk/ISO image
+    # Open the image
     img = pytsk3.Img_Info(str(image_path))
 
-    # Create a filesystem object (for partition 0 if the image is partitionless
-    # or for the file system within an ISO). For multi-partition images,
-    # you may need to detect/parse the partition offset via pytsk3.Volume_Info
-    fs = pytsk3.FS_Info(img)
+    # Enumerate partitions with Volume_Info
+    try:
+        vol = pytsk3.Volume_Info(img)
+    except IOError:
+        # If Volume_Info fails, the image may not have partitions, so just try FS_Info directly:
+        print("No valid partition table found; attempting to parse file system at offset 0.")
+        fs = pytsk3.FS_Info(img)
+    else:
+        print("Partitions detected. Select which partition to analyze:\n")
+        partitions = []
+        for i, part in enumerate(vol):
+            desc = part.desc.decode(errors="replace").strip()
+            print(f"Partition {i}: Start={part.start}, Length={part.len}, Description={desc}")
+            partitions.append(part)
 
-    # Obtain a pytsk3.File object for the requested path
-    print(file_path.as_posix())
+        if not partitions:
+            print("No partitions found; attempting to parse at offset 0.")
+            fs = pytsk3.FS_Info(img)
+        else:
+            choice = input("\nEnter the partition number to use (default 0): ") or "0"
+            choice_index = int(choice)
+            if choice_index < 0 or choice_index >= len(partitions):
+                print(f"Invalid selection. Using partition 0.")
+                choice_index = 0
+
+            selected_part = partitions[choice_index]
+            offset_bytes = selected_part.start * 512  # typical sector size, adjust if known otherwise
+
+            fs = pytsk3.FS_Info(img, offset=offset_bytes)
+
+    print(f"\nAnalyzing file: {file_path.as_posix()}")
     file_obj = find_file_in_fs(fs, file_path.as_posix())
-
-    # Print the cluster runs and slack information
     print_file_runs(fs, file_obj)
-
 
 if __name__ == "__main__":
     if len(sys.argv) != 3:
