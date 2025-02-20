@@ -3,7 +3,9 @@ Find unallocated space immediately after a provided file.
 """
 
 import sys
+
 import pytsk3
+
 
 def print_file_runs_and_slack(fs, file_obj):
     """
@@ -18,28 +20,32 @@ def print_file_runs_and_slack(fs, file_obj):
         # For other FS, TSK_FS_ATTR_TYPE_DEFAULT may apply.
         if attr.info.type in (
             pytsk3.TSK_FS_ATTR_TYPE_DEFAULT,
-            pytsk3.TSK_FS_ATTR_TYPE_NTFS_DATA
+            pytsk3.TSK_FS_ATTR_TYPE_NTFS_DATA,
         ):
             for run in attr:
                 if run.len > 0:  # 0 signals no more runs
-                    runs_info.append({
-                        'file_offset': run.offset,
-                        'cluster_addr': run.addr,
-                        'cluster_len': run.len
-                    })
+                    runs_info.append(
+                        {
+                            "file_offset": run.offset,
+                            "cluster_addr": run.addr,
+                            "cluster_len": run.len,
+                        }
+                    )
 
     # Sort runs by their starting offset in the file
-    runs_info.sort(key=lambda r: r['file_offset'])
+    runs_info.sort(key=lambda r: r["file_offset"])
 
     # Print run info
     print("File Data Runs:")
     for i, r in enumerate(runs_info, start=1):
         # Physical offset in bytes = cluster address * block_size
-        physical_offset = r['cluster_addr'] * fs_block_size
-        physical_length = r['cluster_len'] * fs_block_size
+        physical_offset = r["cluster_addr"] * fs_block_size
+        physical_length = r["cluster_len"] * fs_block_size
         print(f" Run #{i}:")
-        print(f"   File offset range    : [{r['file_offset']}, "
-              f"{r['file_offset'] + physical_length})")
+        print(
+            f"   File offset range    : [{r['file_offset']}, "
+            f"{r['file_offset'] + physical_length})"
+        )
         print(f"   Cluster address      : {r['cluster_addr']}")
         print(f"   Clusters count       : {r['cluster_len']}")
         print(f"   Physical offset (B)  : {physical_offset}")
@@ -52,7 +58,7 @@ def print_file_runs_and_slack(fs, file_obj):
 
     actual_size = meta.size
     # Compute allocated size from the sum of run lengths times block size
-    allocated_size = sum(r['cluster_len'] for r in runs_info) * fs_block_size
+    allocated_size = sum(r["cluster_len"] for r in runs_info) * fs_block_size
     print(f"\nActual file size   : {actual_size}")
     print(f"Allocated size     : {allocated_size}")
 
@@ -64,13 +70,13 @@ def print_file_runs_and_slack(fs, file_obj):
         # Identify which run holds the last byte of file data:
         file_end = actual_size
         for r in reversed(runs_info):
-            run_start = r['file_offset']
-            run_size_bytes = r['cluster_len'] * fs_block_size
+            run_start = r["file_offset"]
+            run_size_bytes = r["cluster_len"] * fs_block_size
             run_end = run_start + run_size_bytes
             if file_end > run_start:
                 used_in_this_run = min(file_end, run_end) - run_start
                 # Slack begins in this run
-                slack_offset = (r['cluster_addr'] * fs_block_size) + used_in_this_run
+                slack_offset = (r["cluster_addr"] * fs_block_size) + used_in_this_run
                 print(f"Slack begins at offset: {slack_offset}")
                 break
     else:
@@ -78,10 +84,11 @@ def print_file_runs_and_slack(fs, file_obj):
 
     # Return the last allocated cluster so we can search for unallocated space after it
     if runs_info:
-        highest_run = max(runs_info, key=lambda r: r['cluster_addr'] + r['cluster_len'])
-        last_cluster = highest_run['cluster_addr'] + highest_run['cluster_len'] - 1
+        highest_run = max(runs_info, key=lambda r: r["cluster_addr"] + r["cluster_len"])
+        last_cluster = highest_run["cluster_addr"] + highest_run["cluster_len"] - 1
         return last_cluster
     return None
+
 
 def find_unallocated_space_after(fs, last_cluster):
     """
@@ -153,6 +160,7 @@ def find_unallocated_space_after(fs, last_cluster):
     else:
         print("\nNo unallocated space found after the last file cluster.")
 
+
 def find_file_in_fs(fs, path_to_file):
     """Open the specified file by path and return a pytsk3.File object."""
     try:
@@ -160,6 +168,7 @@ def find_file_in_fs(fs, path_to_file):
     except IOError:
         print(f"Could not open file: {path_to_file}")
         sys.exit(1)
+
 
 def main(image_path, file_path):
     # 1. Open the disk/ISO image
@@ -175,6 +184,7 @@ def main(image_path, file_path):
 
     # 5. Find next unallocated space after the file’s last cluster
     find_unallocated_space_after(fs, last_cluster)
+
 
 if __name__ == "__main__":
     if len(sys.argv) != 3:

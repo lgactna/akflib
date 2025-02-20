@@ -7,13 +7,11 @@ Prompts:
   pytsk3 to walk the resulting ISO file?
 """
 
-
 import sys
+from pathlib import Path
 
 import pycdlib
 import pytsk3
-
-from pathlib import Path
 
 # def create_iso_from_folder(folder_path: str, iso_path: str) -> None:
 #     """
@@ -21,16 +19,16 @@ from pathlib import Path
 #     writing the result to 'iso_path'.
 #     """
 #     iso = pycdlib.PyCdlib()
-    
+
 #     # Initialize a new ISO-9660 filesystem; Joliet extensions are enabled.
 #     iso.new(joliet=True)
-    
+
 #     # Recursively add files and subdirectories from the folder
 #     for root, dirs, files in os.walk(folder_path):
 #         for d in dirs:
 #             # Convert paths into ISO-9660-compliant directory names
 #             rel_dir_path = os.path.relpath(os.path.join(root, d), folder_path)
-            
+
 #             iso.add_directory(joliet_path="/"+rel_dir_path.replace(os.sep, "/"))
 #         for f in files:
 #             rel_file_path = os.path.relpath(os.path.join(root, f), folder_path)
@@ -42,6 +40,7 @@ from pathlib import Path
 #     iso.write(iso_path)
 #     iso.close()
 
+
 def create_iso_from_folder(folder_path: Path, iso_path: Path) -> None:
     """
     Creates an ISO-9660 image from the contents of 'folder_path' using pycdlib,
@@ -51,12 +50,12 @@ def create_iso_from_folder(folder_path: Path, iso_path: Path) -> None:
     iso.new(joliet=True)
 
     # Recursively add files and subdirectories
-    for item in folder_path.rglob('*'):
+    for item in folder_path.rglob("*"):
         # Get relative path of item from folder (using forward slashes). This
         # will be placed relative to the root of the ISO filesystem and therefore
         # must start with a leading "/".
         relative_path = "/" + item.relative_to(folder_path).as_posix()
-        
+
         # Add to ISO.
         if item.is_dir():
             iso.add_directory(joliet_path=relative_path)
@@ -70,12 +69,13 @@ def create_iso_from_folder(folder_path: Path, iso_path: Path) -> None:
 
 def print_directory(directory, indent=0) -> None:
     for entry in directory:
-        if entry.info.name.name in [b'.', b'..']:
+        if entry.info.name.name in [b".", b".."]:
             continue
-        print(' ' * indent + entry.info.name.name.decode('utf-8'))
+        print(" " * indent + entry.info.name.name.decode("utf-8"))
         if entry.info.meta.type == pytsk3.TSK_FS_META_TYPE_DIR:
             sub_directory = entry.as_directory()
             print_directory(sub_directory, indent + 2)
+
 
 def main(folder_path: Path, iso_path: Path) -> None:
     # Create ISO from folder with pycdlib (ISO-9660)
@@ -87,11 +87,12 @@ def main(folder_path: Path, iso_path: Path) -> None:
     root_dir = fs.open_dir("/")
     print_directory(root_dir)
 
+
 if __name__ == "__main__":
     if len(sys.argv) != 3:
         print(f"Usage: {sys.argv[0]} <folder_path> <output_iso_path>")
         sys.exit(1)
-    
+
     folder_path = Path(sys.argv[1])
     iso_path = Path(sys.argv[2])
     main(folder_path, iso_path)

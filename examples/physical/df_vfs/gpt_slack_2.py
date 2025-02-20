@@ -1,19 +1,21 @@
 import sys
+
+from dfvfs.helpers import source_scanner, volume_scanner
 from dfvfs.lib import definitions
-from dfvfs.helpers import source_scanner
-from dfvfs.resolver import resolver
 from dfvfs.lib import errors as dfvfs_errors
 from dfvfs.path import factory as path_spec_factory
-from dfvfs.helpers import volume_scanner
+from dfvfs.resolver import resolver
+
 
 def get_file_entry(file_system, path_spec):
     """Retrieves the file entry for a specific path specification."""
     try:
         file_entry = resolver.Resolver.OpenFileEntry(path_spec)
     except dfvfs_errors.BackEndError as exception:
-        print(f'Unable to open file entry with error: {exception}')
+        print(f"Unable to open file entry with error: {exception}")
         return None
     return file_entry
+
 
 def calculate_slack_space(file_entry):
     """Calculates the slack space for a given file entry."""
@@ -23,6 +25,7 @@ def calculate_slack_space(file_entry):
             if extent.offset + extent.size > file_entry.size:
                 slack_space += (extent.offset + extent.size) - file_entry.size
     return slack_space
+
 
 def main(source_path, file_path):
     # Initialize the source scanner
@@ -48,21 +51,23 @@ def main(source_path, file_path):
 
     # Get the path specification of the file
     file_path_spec = path_spec_factory.Factory.NewPathSpec(
-        definitions.TYPE_INDICATOR_TSK, location=file_path, parent=path_spec)
+        definitions.TYPE_INDICATOR_TSK, location=file_path, parent=path_spec
+    )
 
     # Get the file entry
     file_entry = get_file_entry(file_system, file_path_spec)
     if not file_entry:
-        print(f'File not found: {file_path}')
+        print(f"File not found: {file_path}")
         return
 
     # Calculate the slack space
     slack_space = calculate_slack_space(file_entry)
-    print(f'Slack space for file {file_path}: {slack_space} bytes')
+    print(f"Slack space for file {file_path}: {slack_space} bytes")
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     if len(sys.argv) != 3:
-        print(f'Usage: {sys.argv[0]} <path_to_image> <file_path_in_image>')
+        print(f"Usage: {sys.argv[0]} <path_to_image> <file_path_in_image>")
         sys.exit(1)
 
     source_path = sys.argv[1]

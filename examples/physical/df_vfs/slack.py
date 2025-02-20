@@ -3,29 +3,24 @@ https://www.hecfblog.com/2016/04/daily-blog-367-automating-dfir-with.html
 https://github.com/open-source-dfir/dfvfs-snippets/blob/main/scripts/source_analyzer.py
 """
 
-import sys
 import logging
+import sys
 
 from dfvfs.analyzer import analyzer
-from dfvfs.lib import definitions
-from dfvfs.volume import tsk_volume_system
-
 from dfvfs.credentials import manager as credentials_manager
-from dfvfs.helpers import command_line
-from dfvfs.helpers import source_scanner
-from dfvfs.lib import definitions as dfvfs_definitions
-from dfvfs.resolver import resolver
-
+from dfvfs.helpers import (
+    command_line,
+    file_system_searcher,
+    source_scanner,
+    volume_scanner,
+)
 from dfvfs.lib import definitions
-from dfvfs.helpers import source_scanner
-from dfvfs.resolver import resolver
+from dfvfs.lib import definitions as dfvfs_definitions
 from dfvfs.lib import errors as dfvfs_errors
-from dfvfs.path import factory as path_spec_factory
-from dfvfs.helpers import volume_scanner
-
 from dfvfs.path import factory
-
-from dfvfs.helpers import command_line, file_system_searcher
+from dfvfs.path import factory as path_spec_factory
+from dfvfs.resolver import resolver
+from dfvfs.volume import tsk_volume_system
 
 # Only the following formats are supported:
 # https://dfvfs.readthedocs.io/en/latest/sources/Supported-formats.html
@@ -61,8 +56,8 @@ internal_path = "vboxpostinstall.log"
 
 #####
 
-from dfvfs.vfs.file_system import FileSystem
 from dfvfs.vfs.file_entry import FileEntry
+from dfvfs.vfs.file_system import FileSystem
 
 
 def get_file_entry(file_system, path_spec):
@@ -70,9 +65,10 @@ def get_file_entry(file_system, path_spec):
     try:
         file_entry = resolver.Resolver.OpenFileEntry(path_spec)
     except dfvfs_errors.BackEndError as exception:
-        print(f'Unable to open file entry with error: {exception}')
+        print(f"Unable to open file entry with error: {exception}")
         return None
     return file_entry
+
 
 def calculate_slack_space(file_entry: FileEntry):
     """Calculates the slack space for a given file entry."""
@@ -81,13 +77,13 @@ def calculate_slack_space(file_entry: FileEntry):
         for extent in data_stream.GetExtents():
             print(f"offset: {extent.offset}, size: {extent.size}")
             print(f"file size: {file_entry.size}")
-            
+
             if extent.offset + extent.size > file_entry.size:
                 slack_space += (extent.offset + extent.size) - file_entry.size
     return slack_space
 
 
-# This will ask you for the partition... is there any way to automatically 
+# This will ask you for the partition... is there any way to automatically
 # determine it, or otherwise specify it? One option is that we could subclass
 # CLIVolumeScannerMediator and just bypass the prompt entirely, and select
 # whichever the largest partition is. That's not foolproof.
@@ -108,11 +104,10 @@ print(file_system)
 
 spec = factory.Factory.NewPathSpec(
     # Get path spec indicator for the current file system
-    file_system.GetRootFileEntry().path_spec.type_indicator, 
-    location=internal_path, 
-    parent=base_path_specs[0]
+    file_system.GetRootFileEntry().path_spec.type_indicator,
+    location=internal_path,
+    parent=base_path_specs[0],
 )
-
 
 
 # print(file_system.GetRootFileEntry())
