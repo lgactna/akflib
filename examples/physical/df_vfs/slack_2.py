@@ -91,10 +91,65 @@ def calculate_slack_space(file_entry: FileEntry):
 # Anyways, it's not exactly the greatest option considering that you can't even
 # directly edit virtual drives without a lot of effort (you'd have to unpack
 # the drive and then mess with the compressed data).
-mediator = command_line.CLIVolumeScannerMediator()
+# Custom mediator that tracks the selected volume identifier
+class AutoSelectMediator(command_line.CLIVolumeScannerMediator):
+    def __init__(self):
+        super().__init__()
+        self.selected_volume_identifiers: list[str] | None = None
+        self.volume_system = None
+    
+    # def GetPartitionIdentifiers(self, volume_system, volume_identifiers):
+    #     """Asks the user to provide the partition identifier."""
+    #     self.volume_system = volume_system
+    #     self.selected_volume_identifier = super().GetPartitionIdentifiers(volume_system, volume_identifiers)
+    #     return self.selected_volume_identifier
+    
+    def GetPartitionIdentifiers(self, volume_system, volume_identifiers) -> list[str]:
+        """Automatically selects the largest partition."""
+        self.volume_system = volume_system
+
+        largest_volume_size = 0
+        largest_volume_identifier = volume_identifiers[0]        
+        for identifier in volume_identifiers:
+            volume = self.volume_system.GetVolumeByIdentifier(identifier)
+            if not volume:
+                raise RuntimeError(f'Volume missing for identifier: {identifier}.')
+            
+            volume_extent = volume.extents[0]
+            volume_size = volume_extent.size
+            if volume_size > largest_volume_size:
+                largest_volume_size = volume_size
+                largest_volume_identifier = identifier
+        
+        selected_volume = self.volume_system.GetVolumeByIdentifier(largest_volume_identifier)
+        volume_extent = selected_volume.extents[0]
+        print(f"Selected volume identifier: {largest_volume_identifier} ({volume_extent.offset=}, {volume_extent.size=})")
+        
+        self.selected_volume_identifiers = [largest_volume_identifier]
+        
+        return self.selected_volume_identifiers
+    
+    def GetVolumeInfo(self):
+        """Prints information about the selected volume."""
+        if not self.selected_volume_identifiers or not self.volume_system:
+            return
+            
+        volume = self.volume_system.GetVolumeByIdentifier(self.selected_volume_identifiers[0])
+        volume_extent = volume.extents[0]
+        volume_offset = f'{volume_extent.offset:d} (0x{volume_extent.offset:08x})'
+        volume_size = self._FormatHumanReadableSize(volume_extent.size)
+        
+        print(volume_offset, volume_size)
+
+# Autoselect-largest or CLI volume scanner mediator
+mediator = AutoSelectMediator()
+# mediator = command_line.CLIVolumeScannerMediator()
 
 scanner = volume_scanner.VolumeScanner(mediator=mediator)
 base_path_specs = scanner.GetBasePathSpecs(source_path)
+
+# Print volume information after selection
+mediator.GetVolumeInfo()
 
 # print(base_path_specs)
 
