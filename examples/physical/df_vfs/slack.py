@@ -29,7 +29,8 @@ from dfvfs.volume import tsk_volume_system
 # and give you an OSPathSpec that just points to your own filesystem.
 
 # source_path = "example.iso"
-source_path = "C:\\Users\\Kisun\\Downloads\\decrypted.vhd"
+# source_path = "C:\\Users\\Kisun\\Downloads\\decrypted.vhd"
+source_path = "C:\\Users\\Kisun\\Downloads\\decrypted.iso"
 # source_path = "C:\\Users\\Kisun\\Downloads\\img.vmdk"
 
 # internal_path = "akflib/actions/sample.py"

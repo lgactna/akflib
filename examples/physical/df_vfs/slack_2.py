@@ -29,11 +29,32 @@ from dfvfs.volume import tsk_volume_system
 # and give you an OSPathSpec that just points to your own filesystem.
 
 # source_path = "example.iso"
-source_path = "C:\\Users\\Kisun\\Downloads\\decrypted.vhd"
+# source_path = "C:\\Users\\Kisun\\Downloads\\decrypted.vhd"
+source_path = "C:\\Users\\Kisun\\Downloads\\decrypted-2.iso"
 # source_path = "C:\\Users\\Kisun\\Downloads\\img.vmdk"
 
 # internal_path = "akflib/actions/sample.py"
-internal_path = "Users\\user\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\Startup\\agent.exe"
+# internal_path = "Users\\user\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\Startup\\agent2.exe"
+# internal_path = "Users\\user\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\Startup\\desktop.ini"
+
+# To get the MFT entry of a file:
+# - Get the absolute offset of the $MFT file, which is at the root of the filesystem
+# - Get the MFT entry number of the file (using pytsk3 or similar)
+# - Multiply the MFT entry number by the size of an MFT entry (usually 1024 bytes)
+# - Add this to the absolute offset of the $MFT file
+# - This is the offset of the MFT entry
+#
+# To get the size of an MFT entry:
+# - Go to the very first sector of the volume
+# - Read the byte at offset 0x40 
+# - Interpret it as a signed integer (see https://en.wikipedia.org/wiki/NTFS#Partition_Boot_Sector_(PBS))
+# - If:
+#   - the value is positive, the size of an MFT entry is value*cluster_size
+#   - the value is negative, the size of an MFT entry is 2^abs(value)
+#        - in which case the bytes per sector is at offset 0x0B of the boot sector,
+#          and the sectors per cluster is at offset 0x0D of the boot sector 
+internal_path = "$MFT"
+
 
 # Note a few things - the path has to be correct for the underlying filesystem.
 # For NTFS, it doesn't have a leading slash. Additionally, for NTFS, it cannot
@@ -60,26 +81,43 @@ from dfvfs.vfs.file_entry import FileEntry
 from dfvfs.vfs.file_system import FileSystem
 
 
-def get_file_entry(file_system, path_spec):
-    """Retrieves the file entry for a specific path specification."""
-    try:
-        file_entry = resolver.Resolver.OpenFileEntry(path_spec)
-    except dfvfs_errors.BackEndError as exception:
-        print(f"Unable to open file entry with error: {exception}")
-        return None
-    return file_entry
-
-
-def calculate_slack_space(file_entry: FileEntry):
-    """Calculates the slack space for a given file entry."""
-    slack_space = 0
+def calculate_slack_space(file_entry: FileEntry, block_size: int, absolute_offset: int = 0):
+    """
+    Calculates the slack space for a given file entry.
+    
+    There are three special cases:
+    - The file is sparse, and has a nonzero declared size but a significantly
+      larger actual size (and therefore has "negative" slack space).
+    - The file is fragmented, and the slack space is distributed across multiple
+      clusters. (currently can't be detected)
+    - The file is resident, and has no slack space because it doesn't have any 
+      clusters. The declared size is zero. Editing resident files is not supported
+      since I don't know how to get the location of the MFT entry. 
+      https://github.com/libyal/libfsntfs/blob/main/pyfsntfs/pyfsntfs_file_entry.c
+      doesn't seem to expose anything.
+    """
+    # slack_space = 0
+    
+    actual_size = file_entry.size
+    decl_size = 0
+    
+    last_cluster_size = 0
+    
     for data_stream in file_entry.data_streams:
         for extent in data_stream.GetExtents():
-            print(f"offset: {extent.offset}, size: {extent.size}")
-            print(f"file size: {file_entry.size}")
+            print(f"offset: {extent.offset} (absolute: {extent.offset + absolute_offset} - {extent.offset+absolute_offset+extent.size}), size: {extent.size}, {extent.size%block_size}")
+            decl_size += extent.size
 
-            if extent.offset + extent.size > file_entry.size:
-                slack_space += (extent.offset + extent.size) - file_entry.size
+            last_cluster_size = extent.size
+            # if extent.offset + extent.size > file_entry.size:
+            #     slack_space += (extent.offset + extent.size) - file_entry.size
+            
+    # note that we assume slack space only exists in the final cluster. this is not necessarily guaranteed,
+    # and i'm not sure what a more rigorous approach would entail given the informatoin exposed by dfvfs (since
+    # we aren't able to get the filesystem block size)
+    slack_space = decl_size - actual_size
+    print(f"Declared size: {decl_size}, actual size: {actual_size}")
+    print(f"Occupied size of final cluster: {last_cluster_size - slack_space} ({slack_space} bytes slack)")
     return slack_space
 
 
@@ -97,6 +135,9 @@ class AutoSelectMediator(command_line.CLIVolumeScannerMediator):
         super().__init__()
         self.selected_volume_identifiers: list[str] | None = None
         self.volume_system = None
+        
+        self.volume_offset: int | None = None
+        self.volume_size: int | None = None
     
     # def GetPartitionIdentifiers(self, volume_system, volume_identifiers):
     #     """Asks the user to provide the partition identifier."""
@@ -139,6 +180,9 @@ class AutoSelectMediator(command_line.CLIVolumeScannerMediator):
         volume_offset = f'{volume_extent.offset:d} (0x{volume_extent.offset:08x})'
         volume_size = self._FormatHumanReadableSize(volume_extent.size)
         
+        self.volume_offset = volume_extent.offset
+        self.volume_size = volume_extent.size
+        
         print(volume_offset, volume_size)
 
 # Autoselect-largest or CLI volume scanner mediator
@@ -175,13 +219,54 @@ if entry is None:
     print("File not found")
     exit()
 
-print(calculate_slack_space(entry))
+print(calculate_slack_space(entry, 4096, mediator.volume_offset))
 
-# file_system.GetFileEntryByPathSpec(base_path_specs[0])
+## Part 2: find the offset of the MFT entry of a file
 
-# file_path_spec = path_spec_factory.Factory.NewPathSpec(
+import pytsk3
+
+img = pytsk3.Img_Info(source_path)
+# Enumerate partitions with Volume_Info
+try:
+    vol = pytsk3.Volume_Info(img)
+except IOError:
+    # If Volume_Info fails, the image may not have partitions, so just try FS_Info directly:
+    print("No valid partition table found; attempting to parse file system at offset 0.")
+    fs = pytsk3.FS_Info(img)
+else:
+    print("Partitions detected. Select which partition to analyze:\n")
+    partitions = []
+    for i, part in enumerate(vol):
+        desc = part.desc.decode(errors="replace").strip()
+        print(f"Partition {i}: Start={part.start}, Length={part.len}, Description={desc}")
+        partitions.append(part)
+
+    if not partitions:
+        print("No partitions found; attempting to parse at offset 0.")
+        fs = pytsk3.FS_Info(img)
+    else:
+        choice = input("\nEnter the partition number to use (default 0): ") or "0"
+        choice_index = int(choice)
+        if choice_index < 0 or choice_index >= len(partitions):
+            print(f"Invalid selection. Using partition 0.")
+            choice_index = 0
+
+        selected_part = partitions[choice_index]
+        offset_bytes = selected_part.start * 512  # typical sector size, adjust if known otherwise
+
+        fs = pytsk3.FS_Info(img, offset=offset_bytes)
+file_obj = fs.open(path="Users/user/AppData/Roaming/Microsoft/Windows/Start Menu/Programs/Startup/desktop.ini")
+print(file_obj.info.meta.addr)
+
+
+# entry = file_system.GetFileEntryByPathSpec(base_path_specs[0])
+
+# tsk_path_spec = path_spec_factory.Factory.NewPathSpec(
 #     definitions.TYPE_INDICATOR_TSK, location="/", parent=base_path_specs[0]
 # )
+# resolver.Resolver.OpenFileEntry(tsk_path_spec)
 
 # file_entry = get_file_entry(file_system, file_path_spec)
 # print(file_entry)
+
+
