@@ -1,6 +1,7 @@
-from caselib import uco
-
 from abc import ABC, abstractmethod
+from typing import ClassVar, Type
+
+from caselib import uco
 
 class CASERenderer(ABC):
     """
@@ -15,11 +16,26 @@ class CASERenderer(ABC):
     UCO/CASE objects types that it handles.
     """
     
-    @classmethod
-    @abstractmethod
-    def get_group(cls) -> str:
+    # The human-readable name of this renderer.
+    name: ClassVar[str]
+    
+    # The group that this renderer belongs to. May be any arbitrary string.
+    #
+    # This can be used to separate the outputs of different renderers into different
+    # documents. When enabled, the outputs of all renderers from the same group 
+    # will be placed into the same document.
+    group: ClassVar[str]
+    
+    # The UCO/CASE object types that this renderer can handle.
+    object_types: ClassVar[Type[uco.core.UcoObject]]
+    
+    def __init_subclass__(cls) -> None:
         """
-        Return the group that this renderer belongs to.
+        Check that subclasses have required attributes.
         """
-        pass
+        REQUIRED_ATTRIBUTES = ['name', 'group', 'object_types']
+        for attr in REQUIRED_ATTRIBUTES:
+            if not hasattr(cls, attr):
+                raise TypeError(f"Can't instantiate abstract class {cls.__name__} "
+                                f"without required attribute '{attr}'")
     
