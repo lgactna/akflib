@@ -3,10 +3,12 @@ repos:
   rev: 24.4.2
   hooks:
   - id: black
+    exclude: ^playground/
 - repo: https://github.com/pre-commit/mirrors-mypy
   rev: v1.10.0
   hooks:
     - id: mypy
+      exclude: ^playground/
       args: [--strict, --warn-unused-configs, --ignore-missing-imports]
       additional_dependencies:
         - pydantic
@@ -15,6 +17,7 @@ repos:
   rev: 5.0.4
   hooks:
     - id: flake8
+      exclude: ^playground/
       additional_dependencies:
         - flake8-bugbear
         - flake8-pyproject
@@ -22,4 +25,5 @@ repos:
   rev: 5.13.2
   hooks:
     - id: isort
+      exclude: ^playground/
       name: isort (python)
