@@ -5,6 +5,7 @@ https://github.com/open-source-dfir/dfvfs-snippets/blob/main/scripts/source_anal
 
 import logging
 import sys
+from pathlib import Path
 
 from dfvfs.analyzer import analyzer
 from dfvfs.credentials import manager as credentials_manager
@@ -34,6 +35,9 @@ source_path = "C:\\Users\\Kisun\\Downloads\\decrypted-2.iso"
 # source_path = "C:\\Users\\Kisun\\Downloads\\img.vmdk"
 
 # internal_path = "akflib/actions/sample.py"
+internal_path = "Users\\user\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\Startup\\agent.exe"
+# internal_path = Path(internal_path).as_posix()
+# print(internal_path)
 # internal_path = "Users\\user\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\Startup\\agent2.exe"
 # internal_path = "Users\\user\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\Startup\\desktop.ini"
 
@@ -53,7 +57,7 @@ source_path = "C:\\Users\\Kisun\\Downloads\\decrypted-2.iso"
 #   - the value is negative, the size of an MFT entry is 2^abs(value)
 #        - in which case the bytes per sector is at offset 0x0B of the boot sector,
 #          and the sectors per cluster is at offset 0x0D of the boot sector 
-internal_path = "$MFT"
+# internal_path = "$MFT"
 
 
 # Note a few things - the path has to be correct for the underlying filesystem.
@@ -131,7 +135,7 @@ def calculate_slack_space(file_entry: FileEntry, block_size: int, absolute_offse
 # the drive and then mess with the compressed data).
 # Custom mediator that tracks the selected volume identifier
 class AutoSelectMediator(command_line.CLIVolumeScannerMediator):
-    def __init__(self):
+    def __init__(self):        
         super().__init__()
         self.selected_volume_identifiers: list[str] | None = None
         self.volume_system = None
@@ -206,10 +210,11 @@ try:
         # Get path spec indicator for the current file system
         file_system.GetRootFileEntry().path_spec.type_indicator,
         location=internal_path,
-        parent=base_path_specs[0],
+        parent=file_system._path_spec,
     )
 except ValueError as e:
     print("Path spec is unsupported for this filesystem. Are you sure this is a supported, unencrypted disk or filesystem?")
+    raise(e)
     exit()
 
 
@@ -222,6 +227,8 @@ if entry is None:
 print(calculate_slack_space(entry, 4096, mediator.volume_offset))
 
 ## Part 2: find the offset of the MFT entry of a file
+
+exit()
 
 import pytsk3
 

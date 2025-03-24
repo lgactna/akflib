@@ -11,6 +11,7 @@ requires-python = ">=3.11"
 dependencies = [
   "caselib",
   "click>=8.1.8",
+  "dfvfs>=20240505",
   "pydantic>=2.10.6",
   "pydantic-yaml>=1.4.0",
   "rpyc>=6.0.1",
