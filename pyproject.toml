@@ -29,7 +29,7 @@ dev = [
 ]
 
 [project.scripts]
-akf-translate = "akflib.translation:main"
+akf-translate = "akflib.declarative:main"
 
 [build-system]
 requires = ["hatchling"]

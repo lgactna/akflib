@@ -3,8 +3,8 @@ from typing import Any, ClassVar, Optional
 
 from caselib.uco.core import Bundle
 
-from akflib.translation.core import AKFModule, AKFModuleArgs, AKFModuleConfig
-from akflib.translation.util import auto_format
+from akflib.declarative.core import AKFModule, AKFModuleArgs, AKFModuleConfig
+from akflib.declarative.util import auto_format
 
 
 class SampleModuleArgs(AKFModuleArgs):

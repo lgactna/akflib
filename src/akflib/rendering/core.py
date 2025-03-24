@@ -1,170 +1,123 @@
-"""
-Core routines/definitions for CASE rendering.
-"""
-
-import logging
-from abc import ABC, abstractmethod
+from collections import defaultdict
 from pathlib import Path
-from typing import Any, ClassVar, Type, Union, get_args, get_origin
+from typing import Type
 
-from caselib.uco.core import Bundle, UcoObject
+from caselib.uco.core import Bundle
 
-logger = logging.getLogger(__name__)
+from akflib.rendering.objs import CASERenderer
 
 
-def get_uco_list_fields(model_class: Type[UcoObject]) -> list[str]:
+def render_bundle(
+    bundle: Bundle, renderers: list[Type[CASERenderer]], base_asset_folder: Path
+) -> dict[Type[CASERenderer], str]:
     """
-    Extract all fields from a UcoObject subclass that allows for lists of UcoObjects.
+    Pass a UCO/CASE bundle through a sequence of renderers.
 
-    Note that this function does not check for fields that only allow exactly
-    one UcoObject, since this should never be the case for the caselib bindings.
+    The renderers are applied in the order they are provided. The result is a
+    dictionary that maps the renderer type to the rendered output.
 
-    :param model_class: A UcoObject subclass.
-    :return: A list of field names that allow for lists of UcoObjects.
-    """
-    result = []
-    fields = model_class.model_fields()
-
-    for field_name, field_info in fields.items():
-        annotation = field_info.annotation
-
-        # Check if the annotation is directly list[UcoObject] or list[UcoSubclass]
-        if _is_uco_list(annotation):
-            result.append(field_name)
-            continue
-
-        # Check if it's a Union/Optional that contains list[UcoObject] or list[UcoSubclass]
-        if get_origin(annotation) is Union:
-            union_args = get_args(annotation)
-            for arg in union_args:
-                if _is_uco_list(arg):
-                    result.append(field_name)
-                    break
-
-    return result
-
-
-def _is_uco_list(annotation: Any) -> bool:
-    """
-    Check if an annotation is list[UcoObject] or list of any UcoObject subclass.
-    """
-    if get_origin(annotation) is not list:
-        return False
-
-    args = get_args(annotation)
-    if len(args) != 1:
-        return False
-
-    # Check if arg is UcoObject or a subclass of UcoObject
-    arg_type = args[0]
-    if isinstance(arg_type, type) and issubclass(arg_type, UcoObject):
-        return True
-
-    return False
-
-
-class CASERenderer(ABC):
-    """
-    Abstract base class for all CASE renderers.
-
-    CASE renderers accept a complete CASE bundle, extract a specific set of
-    objects, and generate a Markdown document from the result.
-
-    They also include some top-level metadata, such as the name of the section,
-    the "group" that the renderer belongs to (so that sections of the same
-    group can be separated into their own documents, if needed), and the specific
-    UCO/CASE objects types that it handles.
+    :param bundle: The UCO bundle to render.
+    :param renderers: A list of renderer classes.
+    :return: A dictionary that maps renderer classes to the rendered output.
     """
 
-    # The internal name for this renderer. It should be unique across all renderers.
-    name: ClassVar[str]
+    results = {}
+    for renderer_class in renderers:
+        results[renderer_class] = renderer_class.render_bundle(
+            bundle, base_asset_folder
+        )
 
-    # The group that this renderer belongs to. May be any arbitrary string.
-    #
-    # This can be used to separate the outputs of different renderers into different
-    # documents. When enabled, the outputs of all renderers from the same group
-    # will be placed into the same document.
-    group: ClassVar[str]
+    return results
 
-    # The UCO/CASE object types that this renderer can handle.
-    object_types: ClassVar[list[Type[UcoObject]]]
 
-    def __init_subclass__(cls) -> None:
-        """
-        Check that subclasses have required attributes.
-        """
-        REQUIRED_ATTRIBUTES = ["name", "group", "object_types"]
-        for attr in REQUIRED_ATTRIBUTES:
-            if not hasattr(cls, attr):
-                raise TypeError(
-                    f"Can't instantiate abstract class {cls.__name__} "
-                    f"without required attribute '{attr}'"
-                )
+def generate_documents(
+    rendered_outputs: dict[Type[CASERenderer], str], group_renderers: bool = False
+) -> dict[str, str]:
+    """
+    Generate complete Markdown documents from a dictionary of rendered outputs.
 
-    @classmethod
-    def _extract_related_objects(cls, bundle: Bundle) -> list[UcoObject]:
-        """
-        Recursively get all objects of the types declared in `object_types` from a
-        UCO bundle.
-        """
-        objects = []
+    The result is a dictionary of group names to complete Markdown documents.
 
-        def _extract_objects_recursive(obj: UcoObject) -> list[UcoObject]:
-            r_objects = []
+    If group_renderers is True, the documents are grouped by renderer type.
+    Otherwise, this returns a single document that concatenates all outputs
+    as the dictionary key "default".
+    """
 
-            # Extract objects of the types declared in `object_types`
-            for obj_type in cls.object_types:
-                if issubclass(obj, obj_type) and not obj._is_reference:
-                    logger.debug(f"Extracted object: {obj}")
-                    r_objects.append(obj)
+    # Begin by grouping renderers as needed.
+    grouped_outputs: dict[str, list[str]] = defaultdict(list)
+    if group_renderers:
+        for renderer_class, output in rendered_outputs.items():
+            group_name = renderer_class.group
+            grouped_outputs[group_name].append(output)
+    else:
+        grouped_outputs = {"default": list(rendered_outputs.values())}
 
-            # For object types that have fields accepting more UcoObjects,
-            # extract and process those as well
-            list_fields = get_uco_list_fields(type(obj))
-            for field in list_fields:
-                field_value = getattr(obj, field)
-                if isinstance(field_value, list):
-                    for item in field_value:
-                        r_objects.extend(_extract_objects_recursive(item))
+    # For each group, combine them into a single document. Insert two newlines
+    # between each document to separate them, and start the document with a level
+    # 1 header containing the group name.
+    documents = {}
+    for group_name, group_outputs in grouped_outputs.items():
+        document = f"# {group_name}\n\n"
+        document += "\n\n".join(group_outputs)
+        documents[group_name] = document
 
-            return r_objects
+    return documents
 
-        for obj in bundle.object:
-            objects.extend(_extract_objects_recursive(obj))
 
-        return objects
+def generate_pdfs(
+    rendered_documents: dict[str, str],
+    output_folder: Path,
+    base_asset_folder: Path,
+    pandoc_path: Path,
+) -> None:
+    """
+    Generate PDFs with Pandoc using the provided document groups.
 
-    @classmethod
-    @abstractmethod
-    def render_objects(cls, objects: list[UcoObject], base_asset_folder: Path) -> str:
-        """
-        Process a list of UCO objects and return a Markdown document.
+    The name of each PDF is simply the key of the dictionary (which should be
+    the group name).
 
-        The generated Markdown document should adhere to Pandoc-style Markdown.
-        Implementations of this function may generate complex documents and
-        place them in a folder relative to `base_asset_folder`, typically with
-        the same name as the renderer itself. The absolute path of
-        `base_asset_folder` will be provided to Pandoc as `--resource-path`;
-        subclasses are responsible for generating correct relative or absolute
-        paths to any assets that should be embedded in the document.
+    :param rendered_documents: A dictionary of group names to complete Markdown documents.
+    :param output_folder: The folder where the PDF(s) and any generated assets will
+        be saved.
+    :param base_asset_folder: The folder where the assets are stored.
+    :param pandoc_path: The path to the Pandoc executable.
+    """
+    # TODO: can we just auto-detect where pandoc is
 
-        For consistency, the renderer should generate a document with a level 2
-        heading (##) as its top-level header.
+    # TODO: steal fastlabel's code
 
-        This function assumes that the objects supported by this renderer have
-        already been extracted from a bundle. (Technically, this can be used to
-        process any list of UCO/CASE objects, but it's intended to be used in
-        conjunction with `_extract_objects()`.)
-        """
-        raise NotImplementedError
+    # TODO: actually implement some renderers and test if this whole pipeline
+    #       even works
 
-    @classmethod
-    def render_bundle(cls, bundle: Bundle, base_asset_folder: Path) -> str:
-        """
-        Process a complete CASE bundle and return a Markdown document.
+    raise NotImplementedError
 
-        The object types declared in `object_types` should be extracted from the
-        bundle and processed by the renderer.
-        """
-        objects = cls._extract_related_objects(bundle)
-        return cls.render_objects(objects, base_asset_folder)
+
+def bundle_to_pdf(
+    bundle: Bundle,
+    renderers: list[Type[CASERenderer]],
+    output_folder: Path,
+    pandoc_path: Path,
+    group_renderers: bool = False,
+) -> None:
+    """
+    Analyze the contents of a UCO/CASE bundle to one or more PDF documents.
+
+    When group_renderers is True, the outputs of the renderers are grouped by
+    the group name of the renderer. This causes multiple documents to be generated,
+    where each document's name is that of the group. Otherwise, a single document
+    whose name is "default.pdf` is generated.
+
+    :param bundle: The UCO/CASE bundle to render.
+    :param renderers: A list of renderer classes to run on the bundle.
+    :param output_folder: The folder where the PDF(s) and any generated assets will
+        be saved.
+    :param group_renderers: If True, group the outputs of the renderers into separate
+        documents based on the group name of a renderer.
+    """
+
+    base_asset_folder = output_folder / "assets"
+
+    outputs = render_bundle(bundle, renderers, base_asset_folder)
+    documents = generate_documents(outputs, group_renderers)
+
+    generate_pdfs(documents, output_folder, base_asset_folder, pandoc_path)
