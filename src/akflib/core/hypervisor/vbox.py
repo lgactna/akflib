@@ -293,17 +293,17 @@ class VBoxHypervisor(HypervisorABC):
         return True
 
     def clone_vm(
-        self, 
+        self,
         target_vm_name: str,
         output_folder: Path | None = None,
     ) -> bool:
         """
         Clone the VM referred to by this instance.
-        
+
         This *does not* create a new VBoxHypervisor instance for the newly-created VM.
         It does, however, automatically register the new VM with VirtualBox (the
         default is to simply create the VM files and exit).
-        
+
         :param target_vm_name: The name of the new VM to create.
         :param output_folder: The folder to save the new VM to. If not set,
             VBoxManage's default VM folder is used.
@@ -311,23 +311,23 @@ class VBoxHypervisor(HypervisorABC):
         """
         # IMachine.clone_to() exists, but it's considerably more effort than simply
         # calling VBoxManage
-        
+
         logger.info(f"Cloning VM {self.machine.id_p} and creating {target_vm_name}.")
-        logger.info(f"This will take a while.")
-        
+        logger.info("This will take a while.")
+
         args = [
             "clonevm",
             self.machine.id_p,
             f"--name={target_vm_name}",
-            f"--register",
+            "--register",
         ]
-        
+
         if output_folder is not None:
             args.append(f"--basefolder={output_folder.resolve().as_posix()}")
-        
+
         result = self._call_vboxmanage(args)
         logger.info(f"VM clone operation for {target_vm_name} finished. ({result=})")
-        
+
         return result
 
     def send_keyboard_event(self, *args, **kwargs):
@@ -336,7 +336,7 @@ class VBoxHypervisor(HypervisorABC):
         """
         # TODO: Preferring agent-based methods for now since the VirtualBox
         # API for issuing keyboard events is clunky
-        
+
         raise NotImplementedError
         # self.session.console.keyboard.put_keys()
 
@@ -351,7 +351,7 @@ class VBoxHypervisor(HypervisorABC):
         if not self._is_ready():
             logger.info("Attempted to send mouse event, but VM is not yet ready")
             return False
-        
+
         self.session.console.mouse.put_mouse_event_absolute(x, y, 0, 0, event.value)
 
         return True
@@ -398,7 +398,7 @@ class VBoxHypervisor(HypervisorABC):
         # TODO: for now, preferring agent-based methods for executing processes
         # because of how clunky this is
         raise NotImplementedError
-        
+
         if not self._is_ready():
             logger.info("Attempted to execute process, but VM is not yet ready")
             return False
@@ -449,7 +449,7 @@ class VBoxHypervisor(HypervisorABC):
         if not self._is_ready():
             logger.info("Attempted to add shared folder, but VM is not yet ready")
             return False
-        
+
         self.session.machine.create_shared_folder(
             logical_name,
             host_path.resolve().as_posix(),
@@ -487,16 +487,20 @@ class VBoxHypervisor(HypervisorABC):
         if not self._is_ready():
             logger.info("Attempted to check for shared folder, but VM is not yet ready")
             return False
-        
+
         if self.guest_session is None:
             raise RuntimeError("Guest session is not set.")
 
         if name_or_path in self.shared_folders:
-            return self.guest_session.directory_exists(
+            result = self.guest_session.directory_exists(
                 self.shared_folders[name_or_path]
             )
+            assert isinstance(result, bool)
+            return result
 
-        return self.guest_session.directory_exists(name_or_path)
+        result = self.guest_session.directory_exists(name_or_path)
+        assert isinstance(result, bool)
+        return result
 
     def unmount_shared_directory(self, name_or_path: str) -> bool:
         """
@@ -519,7 +523,7 @@ class VBoxHypervisor(HypervisorABC):
         """
         # TODO: this might not require that the VM is ready, I believe this goes
         # through VirtualBox itself
-        
+
         # Check if the shared directory exists as a path by reversing the
         # shared_folders dictionary
         inverse_shared_folders = {v: k for k, v in self.shared_folders.items()}
@@ -614,17 +618,19 @@ class VBoxHypervisor(HypervisorABC):
                 f"--format={image_format.value}",
             ]
         )
-        
+
         logger.info(f"Disk export command finished. ({result=})")
-        
+
         # Attempt to close the newly created disk (which removes it from the
         # list of registered disks in VirtualBox)
         for disk in reversed(self.vbox.hard_disks):
             if Path(disk.location).resolve() == output_path.resolve():
-                logger.info(f"Closing/unregistering disk {disk.id_p=} ({disk.location=})")
+                logger.info(
+                    f"Closing/unregistering disk {disk.id_p=} ({disk.location=})"
+                )
                 disk.close()
                 break
-        
+
         return result
 
     def create_memory_dump(self, output_path: Path) -> bool:
@@ -640,15 +646,11 @@ class VBoxHypervisor(HypervisorABC):
         self.session.console.debugger.dump_guest_core(output_path.resolve().as_posix())
         return True
 
-    def _get_non_host_adapter(
-        self, limit: int = 4, raise_on_none: bool = True
-    ) -> vboxlib.INetworkAdapter | None:
+    def _get_non_host_adapter(self, limit: int = 4) -> vboxlib.INetworkAdapter | None:
         """
         Get the first non-host-only adapter attached to the VM.
-        
+
         :param limit: The maximum number of network adapters to check.
-        :param raise_on_none: If True, raise an exception if no non-host-only
-            adapter is found. If False, return None.
         """
         logger.info("Searching for first host-only adapter")
         for i in range(0, limit):
@@ -656,20 +658,23 @@ class VBoxHypervisor(HypervisorABC):
             if adapter.attachment_type != vboxlib.NetworkAttachmentType.host_only:
                 return adapter
 
-        if raise_on_none:
-            raise RuntimeError("No non-host-only adapter")
-
         return None
 
     def get_maintenance_ip(self) -> str:
         """
         Get the IP address of the maintenance (RPyC) network interface.
         """
-        
         adapter = self._get_non_host_adapter()
-        
-        ip_prop = self.machine.enumerate_guest_properties(f"/VirtualBox/GuestInfo/Net/{adapter.slot}/V4/IP")
+        if adapter is None:
+            raise RuntimeError("No non-host-only adapter found.")
+
+        ip_prop = self.machine.enumerate_guest_properties(
+            f"/VirtualBox/GuestInfo/Net/{adapter.slot}/V4/IP"
+        )
+
         host_ip_address = ip_prop[1][0]
+        assert isinstance(host_ip_address, str)
+
         return host_ip_address
 
     def start_network_capture(
