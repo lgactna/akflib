@@ -79,7 +79,64 @@ def test_rendering() -> None:
 
     pprint(dict(bundle._object_index))
 
+def test_rendering_2() -> None:
+    # Sample: UCO bundle rendering, but converted
+    from datetime import UTC, datetime
+    from pprint import pprint
+
+    from caselib import uco
+
+    from akflib.rendering.objs import AKFBundle
+    from caselib.uco.core import Bundle
+
+    bundle_identity = uco.identity.Identity()
+    bundle_identity_name = uco.identity.SimpleNameFacet(
+        givenName="Maurice", familyName="Moss"
+    )
+    bundle_identity.hasFacet.append(bundle_identity_name)  # type: ignore[union-attr]
+
+    bundle_created_time = datetime.strptime(
+        "2024-04-28T21:38:19", "%Y-%m-%dT%H:%M:%S"
+    ).astimezone(UTC)
+    bundle_modified_time = datetime.strptime(
+        "2024-05-02T21:38:19", "%Y-%m-%dT%H:%M:%S"
+    ).astimezone(UTC)
+
+    # This is an example of where bundle_identity ought to be passed in as a
+    # reference. This means that only the @id field is attached to this node,
+    # even though this is technically a copy of the "full" object.
+    bundle = Bundle(
+        createdBy=[bundle_identity.ref()],
+        description="An Example Case File",
+        modifiedTime=bundle_modified_time,
+        name="json ld file",
+        objectCreatedTime=bundle_created_time,
+        specVersion="UCO/CASE 2.0",
+        tag="Artifacts extracted from a mobile phone",
+    )
+    bundle.object.append(bundle_identity)  # type: ignore[union-attr]
+
+    email_address_object_1 = uco.observable.ObservableObject()
+    email_address_1 = uco.observable.EmailAddressFacet(
+        addressValue="info@example.com",
+        displayName="Example User",
+    )
+    email_address_object_1.hasFacet.append(email_address_1)  # type: ignore[union-attr]
+
+    email_account_object_1 = uco.observable.ObservableObject()
+    account_1 = uco.observable.EmailAccountFacet(emailAddress=email_account_object_1)
+    # If we don't use a reference here, we get infinite recursion
+    email_account_object_1.hasFacet.append(account_1.ref())  # type: ignore[union-attr]
+
+    bundle.object.extend([email_account_object_1, email_address_object_1])
+
+    new_bundle = AKFBundle.from_bundle(bundle)
+    pprint(dict(new_bundle._object_index))
+    
+    print(list(new_bundle._object_index.keys()))
+
 
 if __name__ == "__main__":
     # test_slack()
-    test_rendering()
+    # test_rendering()
+    test_rendering_2()
