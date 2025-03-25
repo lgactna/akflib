@@ -20,7 +20,6 @@ def add_objects_recursive(obj: UcoThing, akf_bundle: "AKFBundle") -> None:
     # For object types that have fields accepting more UcoThings,
     # extract and process those as well
     list_fields = get_uco_list_fields(type(obj))
-    print(f"list_fields: {list_fields}")
     for field in list_fields:
         field_value = getattr(obj, field)
         if isinstance(field_value, list):
