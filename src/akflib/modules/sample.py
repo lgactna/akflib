@@ -1,3 +1,7 @@
+"""
+The simplest declarative module example.
+"""
+
 import random
 from typing import Any, ClassVar, Optional
 

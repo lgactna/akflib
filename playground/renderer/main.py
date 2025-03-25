@@ -2,19 +2,19 @@ from abc import ABC, abstractmethod
 from typing import Any, ClassVar, get_origin, get_args, Union, Type
 import logging
 
-from caselib.uco.core import UcoObject, Bundle
+from caselib.uco.core import UcoThing, Bundle
 
 logger = logging.getLogger(__name__)
 
-def get_uco_list_fields(model_class: Type[UcoObject]) -> list[str]:
+def get_uco_list_fields(model_class: Type[UcoThing]) -> list[str]:
     """
-    Extract all fields from a UcoObject subclass that allows for lists of UcoObjects.
+    Extract all fields from a UcoThing subclass that allows for lists of UcoThings.
     
     Note that this function does not check for fields that only allow exactly 
-    one UcoObject, since this should never be the case for the caselib bindings.
+    one UcoThing, since this should never be the case for the caselib bindings.
     
-    :param model_class: A UcoObject subclass.
-    :return: A list of field names that allow for lists of UcoObjects.
+    :param model_class: A UcoThing subclass.
+    :return: A list of field names that allow for lists of UcoThings.
     """
     result = []
     fields = model_class.model_fields()
@@ -22,12 +22,12 @@ def get_uco_list_fields(model_class: Type[UcoObject]) -> list[str]:
     for field_name, field_info in fields.items():
         annotation = field_info.annotation
         
-        # Check if the annotation is directly list[UcoObject] or list[UcoSubclass]
+        # Check if the annotation is directly list[UcoThing] or list[UcoSubclass]
         if _is_uco_list(annotation):
             result.append(field_name)
             continue
             
-        # Check if it's a Union/Optional that contains list[UcoObject] or list[UcoSubclass]
+        # Check if it's a Union/Optional that contains list[UcoThing] or list[UcoSubclass]
         if get_origin(annotation) is Union:
             union_args = get_args(annotation)
             for arg in union_args:
@@ -39,7 +39,7 @@ def get_uco_list_fields(model_class: Type[UcoObject]) -> list[str]:
 
 def _is_uco_list(annotation: Any) -> bool:
     """
-    Check if an annotation is list[UcoObject] or list of any UcoObject subclass.
+    Check if an annotation is list[UcoThing] or list of any UcoThing subclass.
     """
     if get_origin(annotation) is not list:
         return False
@@ -48,9 +48,9 @@ def _is_uco_list(annotation: Any) -> bool:
     if len(args) != 1:
         return False
     
-    # Check if arg is UcoObject or a subclass of UcoObject
+    # Check if arg is UcoThing or a subclass of UcoThing
     arg_type = args[0]
-    if isinstance(arg_type, type) and issubclass(arg_type, UcoObject):
+    if isinstance(arg_type, type) and issubclass(arg_type, UcoThing):
         return True
     
 
@@ -78,7 +78,7 @@ class CASERenderer(ABC):
     group: ClassVar[str]
     
     # The UCO/CASE object types that this renderer can handle.
-    object_types: ClassVar[list[Type[UcoObject]]]
+    object_types: ClassVar[list[Type[UcoThing]]]
     
     def __init_subclass__(cls) -> None:
         """
@@ -91,14 +91,14 @@ class CASERenderer(ABC):
                                 f"without required attribute '{attr}'")
     
     @classmethod
-    def _extract_related_objects(cls, bundle: Bundle) -> list[UcoObject]:
+    def _extract_related_objects(cls, bundle: Bundle) -> list[UcoThing]:
         """
         Recursively get all objects of the types declared in `object_types` from a 
         UCO bundle.
         """
         objects = []
         
-        def _extract_objects_recursive(obj: UcoObject) -> list[UcoObject]:            
+        def _extract_objects_recursive(obj: UcoThing) -> list[UcoThing]:            
             r_objects = []
             
             # Extract objects of the types declared in `object_types`
@@ -107,7 +107,7 @@ class CASERenderer(ABC):
                     logger.debug(f"Extracted object: {obj}")
                     r_objects.append(obj)
             
-            # For object types that have fields accepting more UcoObjects,
+            # For object types that have fields accepting more UcoThings,
             # extract and process those as well
             list_fields = get_uco_list_fields(type(obj))
             for field in list_fields:
@@ -123,7 +123,7 @@ class CASERenderer(ABC):
 
     @classmethod
     @abstractmethod
-    def render_objects(self, objects: list[UcoObject]) -> str:
+    def render_objects(self, objects: list[UcoThing]) -> str:
         """
         Process a list of UCO objects and return a Markdown document.
         
