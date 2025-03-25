@@ -29,5 +29,5 @@ def test_slack() -> None:
 
 def test_rendering() -> None:
     # Sample: UCO bundle rendering
-    # from akflib.rendering.core import render_uco_bundle
+    # from akflib.rendering.base import render_uco_bundle
     pass
