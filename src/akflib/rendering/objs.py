@@ -56,6 +56,8 @@ class AKFBundle(Bundle):
                 if isinstance(field_value, list):
                     for item in field_value:
                         add_objects_recursive(item, akf_bundle)
+                elif issubclass(field_value, UcoObject):
+                    add_objects_recursive(field_value, akf_bundle)
 
         akf_bundle = cls()
 
@@ -188,6 +190,8 @@ class CASERenderer(ABC):
                 if isinstance(field_value, list):
                     for item in field_value:
                         r_objects.extend(_extract_objects_recursive(item))
+                elif issubclass(field_value, UcoObject):
+                    r_objects.extend(_extract_objects_recursive(field_value))
 
             return r_objects
 
