@@ -3,14 +3,13 @@ The simplest declarative module example.
 """
 
 import random
-from typing import Any, ClassVar, Optional
+from typing import Any, ClassVar
 
 from akflib.declarative.core import AKFModule, AKFModuleArgs, AKFModuleConfig
 from akflib.declarative.util import auto_format
 from akflib.rendering.objs import AKFBundle
 
 # from caselib.uco.core import Bundle
-
 
 
 class SampleModuleArgs(AKFModuleArgs):
@@ -44,6 +43,6 @@ class SampleModule(AKFModule[SampleModuleArgs, SampleModuleConfig]):
         args: SampleModuleArgs,
         config: SampleModuleConfig,
         state: dict[str, Any],
-        bundle: Optional[AKFBundle] = None,
+        bundle: AKFBundle | None = None,
     ) -> None:
         print(f"I choose {random.choice((args.arg1, args.arg2))}")
