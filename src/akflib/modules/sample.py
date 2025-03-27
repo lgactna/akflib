@@ -5,11 +5,12 @@ The simplest declarative module example.
 import random
 from typing import Any, ClassVar, Optional
 
-# from caselib.uco.core import Bundle
-
 from akflib.declarative.core import AKFModule, AKFModuleArgs, AKFModuleConfig
 from akflib.declarative.util import auto_format
 from akflib.rendering.objs import AKFBundle
+
+# from caselib.uco.core import Bundle
+
 
 
 class SampleModuleArgs(AKFModuleArgs):
