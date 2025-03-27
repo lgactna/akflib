@@ -65,7 +65,7 @@ class TemporarySession:
         self.session = virtualbox.Session()
         self.machine = machine
 
-        self.machine.lock_machine(self.session, vboxlib.LockType.Shared)
+        self.machine.lock_machine(self.session, vboxlib.LockType.shared)
 
     def __enter__(self) -> virtualbox.Session:
         return self.session
@@ -170,7 +170,7 @@ class VBoxHypervisor(HypervisorABC):
 
         return s.returncode == 0
 
-    def _lock(self, lock_type: vboxlib.LockType = vboxlib.LockType.Shared) -> None:
+    def _lock(self, lock_type: vboxlib.LockType = vboxlib.LockType.shared) -> None:
         """
         Get a lock to the machine associated with this session.
 

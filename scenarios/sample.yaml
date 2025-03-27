@@ -9,8 +9,12 @@ seed: "0"
 libraries:
   - akflib.modules
 actions:
-  - name: Run the sample action
+  - name: Create a new CASE bundle to be reused throughout the scenario
     module: akflib.modules.sample.SampleModule
     args:
       arg1: "value1"
       arg2: "value2"
+  - name: Instantiate a hypervisor object tied to a specific virtual machine
+    module: akflib.modules.vbox.VBoxStartModule
+    args:
+      machine_name: "akf-windows_1"

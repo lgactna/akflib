@@ -7,9 +7,6 @@ from typing import Any, ClassVar
 
 from akflib.declarative.core import AKFModule, AKFModuleArgs, AKFModuleConfig
 from akflib.declarative.util import auto_format
-from akflib.rendering.objs import AKFBundle
-
-# from caselib.uco.core import Bundle
 
 
 class SampleModuleArgs(AKFModuleArgs):
@@ -33,7 +30,7 @@ class SampleModule(AKFModule[SampleModuleArgs, SampleModuleConfig]):
         cls, args: SampleModuleArgs, config: SampleModuleConfig, state: dict[str, Any]
     ) -> str:
         return auto_format(
-            f'print(f\'I choose {{random.choice(("{args.arg1}", "{args.arg2}"))}}\')\n',
+            f'print(f\'I choose {{random.choice(("{args.arg1}", "{args.arg2}"))}}\')',
             state,
         )
 
@@ -43,6 +40,5 @@ class SampleModule(AKFModule[SampleModuleArgs, SampleModuleConfig]):
         args: SampleModuleArgs,
         config: SampleModuleConfig,
         state: dict[str, Any],
-        bundle: AKFBundle | None = None,
     ) -> None:
         print(f"I choose {random.choice((args.arg1, args.arg2))}")

@@ -179,9 +179,23 @@ class AKFModule(abc.ABC, Generic[ArgsType, ConfigType]):
         return result  # type: ignore[no-any-return]
 
     @staticmethod
-    def get_akf_bundle(state: dict[str, Any]) -> AKFBundle | None:
+    def get_akf_bundle_var(state: dict[str, Any]) -> str | None:
         """
         Extract the name of the currently specified AKFBundle variable from the state
+        dictionary.
+
+        Returns None if the AKFBundle variable name is not set.
+        """
+
+        if result := state.get("akflib.akf_bundle_var", None):
+            assert isinstance(result, str)
+
+        return result  # type: ignore[no-any-return]
+
+    @staticmethod
+    def get_akf_bundle(state: dict[str, Any]) -> AKFBundle | None:
+        """
+        Extract the currently specified AKFBundle variable from the state
         dictionary.
 
         Returns None if the AKFBundle variable is not set.

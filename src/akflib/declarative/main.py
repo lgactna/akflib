@@ -129,6 +129,7 @@ def execution_entrypoint(
     # Execute each action in sequence
     for action in scenario.actions:
         module = modules[action.module]
+        logger.info(f"Executing action: {action.name}")
         execute_module(module, action.args, scenario.config | action.config, state)
 
 
@@ -159,9 +160,13 @@ def translation_entrypoint(
     # Generate the code for each action
     for action in scenario.actions:
         module = modules[action.module]
+        result += f"# {action.name}\n"
         result += generate_code_from_module(
             module, action.args, scenario.config | action.config, state
         )
+
+        # One full newline between each action, at minimum
+        result += "\n"
     return result + "\n"
 
 
