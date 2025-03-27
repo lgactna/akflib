@@ -330,7 +330,7 @@ class VBoxHypervisor(HypervisorABC):
 
         return result
 
-    def send_keyboard_event(self, *args, **kwargs):
+    def send_keyboard_event(self, *args: Any, **kwargs: Any) -> bool:
         """
         Issue keyboard events to the VM.
         """
@@ -403,11 +403,11 @@ class VBoxHypervisor(HypervisorABC):
             logger.info("Attempted to execute process, but VM is not yet ready")
             return False
 
-    def attach_drive(self, *args, **kwargs) -> bool:
+    def attach_drive(self, *args: Any, **kwargs: Any) -> bool:
         # ~ attach_usb_device
         raise NotImplementedError
 
-    def detach_drive(self, *args, **kwargs) -> bool:
+    def detach_drive(self, *args: Any, **kwargs: Any) -> bool:
         # ~ detach_usb_device
         raise NotImplementedError
 

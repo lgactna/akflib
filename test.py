@@ -1,3 +1,10 @@
+# mypy: disable-error-code="union-attr"
+
+# because of how CASE accepts either single instances of objects or lists of
+# objects, mypy (correctly) complains that you can't extend() or append() to
+# something that isn't a list. however, we know that relevant attributes are
+# instantiated with lists by default, so for the sake of not having to type
+# ignore every line involving these attributes, it's disabled for the whole file.
 import logging
 from pathlib import Path
 
@@ -40,7 +47,7 @@ def test_rendering() -> None:
     bundle_identity_name = uco.identity.SimpleNameFacet(
         givenName="Maurice", familyName="Moss"
     )
-    bundle_identity.hasFacet.append(bundle_identity_name)  # type: ignore[union-attr]
+    bundle_identity.hasFacet.append(bundle_identity_name)
 
     bundle_created_time = datetime.strptime(
         "2024-04-28T21:38:19", "%Y-%m-%dT%H:%M:%S"
@@ -68,16 +75,17 @@ def test_rendering() -> None:
         addressValue="info@example.com",
         displayName="Example User",
     )
-    email_address_object_1.hasFacet.append(email_address_1)  # type: ignore[union-attr]
+    email_address_object_1.hasFacet.append(email_address_1)
 
     email_account_object_1 = uco.observable.ObservableObject()
     account_1 = uco.observable.EmailAccountFacet(emailAddress=email_account_object_1)
     # If we don't use a reference here, we get infinite recursion
-    email_account_object_1.hasFacet.append(account_1.ref())  # type: ignore[union-attr]
+    email_account_object_1.hasFacet.append(account_1.ref())
 
     bundle.add_object(email_account_object_1)
 
     pprint(dict(bundle._object_index))
+
 
 def test_rendering_2() -> None:
     # Sample: UCO bundle rendering, but converted
@@ -85,15 +93,15 @@ def test_rendering_2() -> None:
     from pprint import pprint
 
     from caselib import uco
+    from caselib.uco.core import Bundle
 
     from akflib.rendering.objs import AKFBundle
-    from caselib.uco.core import Bundle
 
     bundle_identity = uco.identity.Identity()
     bundle_identity_name = uco.identity.SimpleNameFacet(
         givenName="Maurice", familyName="Moss"
     )
-    bundle_identity.hasFacet.append(bundle_identity_name)  # type: ignore[union-attr]
+    bundle_identity.hasFacet.append(bundle_identity_name)
 
     bundle_created_time = datetime.strptime(
         "2024-04-28T21:38:19", "%Y-%m-%dT%H:%M:%S"
@@ -114,25 +122,25 @@ def test_rendering_2() -> None:
         specVersion="UCO/CASE 2.0",
         tag="Artifacts extracted from a mobile phone",
     )
-    bundle.object.append(bundle_identity)  # type: ignore[union-attr]
+    bundle.object.append(bundle_identity)
 
     email_address_object_1 = uco.observable.ObservableObject()
     email_address_1 = uco.observable.EmailAddressFacet(
         addressValue="info@example.com",
         displayName="Example User",
     )
-    email_address_object_1.hasFacet.append(email_address_1)  # type: ignore[union-attr]
+    email_address_object_1.hasFacet.append(email_address_1)
 
     email_account_object_1 = uco.observable.ObservableObject()
     account_1 = uco.observable.EmailAccountFacet(emailAddress=email_account_object_1)
     # If we don't use a reference here, we get infinite recursion
-    email_account_object_1.hasFacet.append(account_1.ref())  # type: ignore[union-attr]
+    email_account_object_1.hasFacet.append(account_1.ref())
 
     bundle.object.extend([email_account_object_1, email_address_object_1])
 
     new_bundle = AKFBundle.from_bundle(bundle)
     pprint(dict(new_bundle._object_index))
-    
+
     print(list(new_bundle._object_index.keys()))
 
 

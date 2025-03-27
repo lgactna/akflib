@@ -30,7 +30,7 @@ class HypervisorABC(abc.ABC):
     instance or something similar?
 
     TODO: convert all the *args and **kwargs into actual, coherent arguments so
-    LSP actually holds and we aren't just cheating
+    LSP actually holds and we aren't just cheating?
 
     TODO: snapshot management, e.g. create_snapshot, restore_snapshot, delete_snapshot
     """
@@ -50,6 +50,15 @@ class HypervisorABC(abc.ABC):
         Start the virtual machine.
 
         :return: True if the machine was started, False otherwise.
+        """
+        pass
+
+    @abc.abstractmethod
+    def clone_vm(self, *args: Any, **kwargs: Any) -> bool:
+        """
+        Clone the virtual machine.
+
+        :return: True if the machine was cloned, False otherwise.
         """
         pass
 
@@ -101,6 +110,27 @@ class HypervisorABC(abc.ABC):
         pass
 
     @abc.abstractmethod
+    def mount_shared_directory(self, *args: Any, **kwargs: Any) -> bool:
+        """
+        Mount a shared directory on the virtual machine.
+        """
+        pass
+
+    @abc.abstractmethod
+    def verify_shared_directory(self, *args: Any, **kwargs: Any) -> bool:
+        """
+        Verify a shared directory on the virtual machine.
+        """
+        pass
+
+    @abc.abstractmethod
+    def unmount_shared_directory(self, *args: Any, **kwargs: Any) -> bool:
+        """
+        Unmount a shared directory on the virtual machine.
+        """
+        pass
+
+    @abc.abstractmethod
     def set_bios_time(self, *args: Any, **kwargs: Any) -> bool:
         """
         Set the BIOS time on the virtual machine.
@@ -124,6 +154,16 @@ class HypervisorABC(abc.ABC):
 
         This does not require running an application on the machine itself, which
         is different from the typical process of using something like Magnet Acquire.
+        """
+        pass
+
+    @abc.abstractmethod
+    def get_maintenance_ip(self) -> str:
+        """
+        Get the maintenance IP of the virtual machine.
+
+        For most things in AKF, this is used to determine the IP address that
+        must be used when connecting to the RPyC services running on the machine.
         """
         pass
 
