@@ -1,5 +1,11 @@
 """
 Entrypoint for the declarative translator.
+
+From akflib, the following state variables can be expected:
+
+- akflib.hypervisor: An active HypervisorABC object.
+- akflib.hypervisor_var: The name of the currently active hypervisor object.
+- akflib.akf_bundle: An AKFBundle object.
 """
 
 import importlib
