@@ -13,9 +13,25 @@ class AKFModuleArgs(abc.ABC, BaseModel):
     pass
 
 
+class NullArgs(AKFModuleArgs):
+    """
+    Explicit, default argument model for modules that don't require arguments.
+    """
+
+    pass
+
+
 class AKFModuleConfig(abc.ABC, BaseModel):
     """
     Root for any module configuration models.
+    """
+
+    pass
+
+
+class NullConfig(AKFModuleConfig):
+    """
+    Explicit, default configuration model for modules that don't require configuration.
     """
 
     pass
