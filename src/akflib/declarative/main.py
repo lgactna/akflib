@@ -44,6 +44,12 @@ def get_akf_modules(
     """
     Attempt to import a set of AKFModules identified by their fully-qualified
     module paths.
+
+    TODO: This doesn't support the `aliases` attribute of modules. It requires
+    fully-qualified module paths. What *should* happen is that we accept the
+    `library` key in the scenario file, preload a bunch of modules and their
+    aliases, and check if a module that can't be found using a fully-qualified name
+    exists in the preloaded modules.
     """
     imported_objects = {}
     for path in module_paths:
@@ -183,9 +189,23 @@ def translation_entrypoint(
     type=click.Path(dir_okay=False, writable=True),
     help="Output file for generated code. Does nothing when --execute is set.",
 )
+@click.option(
+    "--log-level",
+    type=click.Choice(["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]),
+    default="INFO",
+    help="Set the logging level.",
+)
 def main(
-    input_file: str, translate: bool, execute: bool, machine_name: str, output_file: str
+    input_file: str,
+    translate: bool,
+    execute: bool,
+    machine_name: str,
+    output_file: str,
+    log_level: str,
 ) -> None:
+    logger.setLevel(log_level)
+    logger.info(f"Log level set to {log_level}")
+
     # Exactly one of translate or execute must be set
     if not (translate ^ execute):
         raise RuntimeError("Exactly one of --translate or --execute must be set.")
@@ -200,8 +220,14 @@ def main(
 
     # Collect a list of all individual actions declared, check if we
     # can import them and build a lookup list
+    logger.info("Collecting declared modules")
     module_paths = {action.module for action in scenario.actions}
     modules = get_akf_modules(module_paths)
+
+    logger.info("Successfully imported declared modules")
+    logger.debug("Module dictionary:")
+    for key, value in modules.items():
+        logger.debug(f"  {key}: {value}")
 
     if execute:
         logger.info(f"Executing scenario using {machine_name=}")
@@ -211,8 +237,8 @@ def main(
             raise RuntimeError("Machine name must be set when executing a scenario.")
         execution_entrypoint(scenario, modules, machine_name)
     elif translate:
-        if output_file is not None:
-            logger.info("Translating scenario to stdout.")
+        if output_file is None:
+            logger.info("Translating scenario to stdout")
         else:
             logger.info(f"Translating scenario to {output_file=}")
 

@@ -7,10 +7,10 @@ description: sample scenario
 author: lgactna
 seed: "0"
 libraries:
-  - akflib.actions
+  - akflib.modules
 actions:
   - name: Run the sample action
-    module: akflib.actions.sample.SampleModule
+    module: akflib.modules.sample.SampleModule
     args:
       arg1: "value1"
       arg2: "value2"
