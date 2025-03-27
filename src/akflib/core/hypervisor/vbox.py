@@ -235,7 +235,7 @@ class VBoxHypervisor(HypervisorABC):
 
     def start_vm(
         self,
-        frontend: VBoxFrontendEnum,
+        frontend: VBoxFrontendEnum = VBoxFrontendEnum.GUI,
         environment_changes: list[str] | None = None,
         wait_for_guest_additions: bool = True,
     ) -> bool:

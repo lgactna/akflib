@@ -2,6 +2,7 @@
 Core routines/definitions for CASE rendering.
 """
 
+import json
 import logging
 from abc import ABC, abstractmethod
 from collections import defaultdict
@@ -67,6 +68,14 @@ class AKFBundle(Bundle):
         """
         for obj in objs:
             add_objects_recursive(obj, self)
+
+    def write_to_jsonld(self, output_path: Path, indent: int = 2) -> None:
+        """
+        Write the AKFBundle to a JSON-LD file.
+        """
+        with open(output_path, "wt+") as f:
+            data = self.model_dump(serialize_as_any=True)
+            f.write(json.dumps(data, indent=indent))
 
     @classmethod
     def from_bundle(cls, bundle: Bundle) -> "AKFBundle":

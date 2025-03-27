@@ -45,6 +45,12 @@ extend_ignore = [
 ]
 exclude = "playground/*"
 
+# Ignore "blank line contains whitespace" for the declarative main loop, since
+# it contains generated code that requires whitespace to be present.
+per-file-ignores = """
+    ./src/akflib/declarative/main.py: W293
+"""
+
 [tool.mypy]
 strict_optional = true
 exclude = ["playground"]
