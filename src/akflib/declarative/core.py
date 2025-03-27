@@ -112,6 +112,18 @@ ArgsType = TypeVar("ArgsType", bound=AKFModuleArgs)
 ConfigType = TypeVar("ConfigType", bound=AKFModuleConfig)
 
 
+def check_required_attributes(cls: Type[Any], required_attributes: list[str]) -> None:
+    """
+    Check that subclasses have required attributes.
+    """
+    for attr in required_attributes:
+        if not hasattr(cls, attr):
+            raise TypeError(
+                f"Can't instantiate abstract class {cls.__name__} "
+                f"without required attribute '{attr}'"
+            )
+
+
 class AKFModule(abc.ABC, Generic[ArgsType, ConfigType]):
     """
     Abstract base classes for modules that can be invoked through the declarative
@@ -144,9 +156,22 @@ class AKFModule(abc.ABC, Generic[ArgsType, ConfigType]):
         """
         Check that subclasses have required attributes.
         """
+        super().__init_subclass__()
+
         REQUIRED_ATTRIBUTES = ["aliases", "arg_model", "config_model", "dependencies"]
+
+        # Get class annotations
+        annotations = getattr(cls, "__annotations__", {})
+
         for attr in REQUIRED_ATTRIBUTES:
-            if not hasattr(cls, attr):
+            # Check if attribute exists either as a value or as an annotation --
+            # for concrete classes, we care that it has a value (hasattr), but
+            # for abstract classes, we care that it has an annotation.
+            #
+            # In the strictest sense, we could check if the class is abstract
+            # or not, but what matters is that you're aware of the attributes
+            # to begin with, so we don't make a distinction.
+            if not (hasattr(cls, attr) or attr in annotations):
                 raise TypeError(
                     f"Can't instantiate abstract class {cls.__name__} "
                     f"without required attribute '{attr}'"
