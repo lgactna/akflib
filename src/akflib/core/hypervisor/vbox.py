@@ -7,6 +7,7 @@ import logging
 import platform
 import shutil
 import subprocess
+import time
 from enum import Enum
 from pathlib import Path
 from types import TracebackType
@@ -194,17 +195,49 @@ class VBoxHypervisor(HypervisorABC):
 
         This is *not* equivalent to checking if the VM is at the desktop and is
         ready to accept application-specific commands.
-        """
-        return bool(self.machine.state == vboxlib.MachineState.Running)
 
-    def _guest_additions_installed(self) -> bool:
+        NOTE: In theory, this method should be accurate. However, my own testing
+        seems to report nothing but "paused" when the machine is actually running,
+        though the intermediate states (powered off, saving, etc.) seem to be
+        accurately reported.
+        """
+        raise RuntimeError("_is_running() is not accurate. Use _is_ready().")
+
+        return bool(self.machine.state == vboxlib.MachineState.running)
+
+    def _poll_guest_additions(
+        self, level: vboxlib.AdditionsRunLevelType, timeout: int = 15
+    ) -> bool:
         """
         Check if Guest Additions are installed on the VM.
-        """
-        return bool(
-            self.session.console.guest.additions_state
-            != vboxlib.AdditionsRunLevelType.none
-        )
+
+        additions_run_level is not actually reflective of them being installed,
+        it's reflective of whether the drivers have been loaded. The drivers
+        don't load instantly on startup, so it will gradually transition from
+        "system" to "userland" to "desktop".
+
+        :param timeout: The time, in seconds, to poll the Guest Additions
+            status.
+        :param level: The level to check for. This is one of the values in the
+            `AdditionsRunLevelType` enumeration.
+        :return: True if the specified level is reached within wait_period,
+            False otherwise.
+        """        
+        # Instant check
+        # mypy doesn't have access to the vboxapi library, so it doesn't know
+        # this bool compare is correct
+        if timeout <= 0:
+            return self.session.console.guest.additions_run_level == level  # type: ignore[no-any-return]
+
+        # Delayed check
+        while timeout > 0:
+            if self.session.console.guest.additions_run_level == level:
+                return True
+
+            time.sleep(1)
+            timeout -= 1
+
+        return False
 
     def _start_guest_session(
         self, username: str, password: str = "", session_name: str = ""
@@ -223,14 +256,13 @@ class VBoxHypervisor(HypervisorABC):
         """
         Check if the VM is ready to accept application-specific commands.
 
-        This is equivalent to checking if the VM is at the desktop.
+        This is equivalent to checking if the VM is at the desktop (note that
+        it might take a little longer than when the desktop first appears).
         """
-        if not self._is_running():
-            return False
 
         return bool(
-            self.session.console.guest.additions_status
-            == vboxlib.AdditionsRunLevelType.Desktop
+            self.session.console.guest.additions_run_level
+            == vboxlib.AdditionsRunLevelType.desktop
         )
 
     def start_vm(
@@ -238,6 +270,7 @@ class VBoxHypervisor(HypervisorABC):
         frontend: VBoxFrontendEnum = VBoxFrontendEnum.GUI,
         environment_changes: list[str] | None = None,
         wait_for_guest_additions: bool = True,
+        guest_additions_timeout: int = 30,
     ) -> bool:
         """
         Start the virtual machine.
@@ -247,8 +280,10 @@ class VBoxHypervisor(HypervisorABC):
             the VM. See the `virtualbox` library for more information. If `None`,
             an empty list is used.
         :param wait_for_guest_additions: If True, this method blocks until the
-            VM reports that Guest Additions are installed. If False, this method
-            returns as soon as `launch_vm_process()` completes.
+            VM reports that Guest Additions is at the "desktop" state.
+        :param guest_additions_timeout: The time, in seconds, to wait for Guest
+            Additions to be at the "desktop" state. If not set, a default of 30
+            seconds is used.
         :return: True if the machine was started, False otherwise.
         """
         # launch_vm_process unconditionally expects a list
@@ -261,10 +296,15 @@ class VBoxHypervisor(HypervisorABC):
         future.wait_for_completion()
 
         if wait_for_guest_additions:
-            if not self._guest_additions_installed():
-                raise RuntimeError("Guest Additions are not installed.")
-            while not self._is_ready():
-                pass
+            logger.info(
+                f"Waiting up to {guest_additions_timeout} seconds for the machine to be ready"
+            )
+
+            self._poll_guest_additions(
+                vboxlib.AdditionsRunLevelType.desktop, guest_additions_timeout
+            )
+
+            logger.info("Machine is ready, unblocking")
 
         return True
 
@@ -656,6 +696,7 @@ class VBoxHypervisor(HypervisorABC):
         for i in range(0, limit):
             adapter = self.machine.get_network_adapter(i)
             if adapter.attachment_type != vboxlib.NetworkAttachmentType.host_only:
+                logger.info(f"Returning adapter {i} as the host-only adapter")
                 return adapter
 
         return None
@@ -674,6 +715,8 @@ class VBoxHypervisor(HypervisorABC):
 
         host_ip_address = ip_prop[1][0]
         assert isinstance(host_ip_address, str)
+
+        logger.info(f"Maintenance IP is {host_ip_address}")
 
         return host_ip_address
 
