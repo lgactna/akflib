@@ -32,6 +32,8 @@ logger = logging.getLogger()
 
 
 def generate_import_statements(import_paths: Iterable[str]) -> str:
+    # Note that this doesn't group import statements together or do anything
+    # fancy like that
     import_statements = []
     for path in import_paths:
         parts = path.split(".")
@@ -41,6 +43,10 @@ def generate_import_statements(import_paths: Iterable[str]) -> str:
             module = ".".join(parts[:-1])
             name = parts[-1]
             import_statements.append(f"from {module} import {name}")
+
+    # Sort import statements alphabetically
+    import_statements.sort()
+
     return "\n".join(import_statements)
 
 
