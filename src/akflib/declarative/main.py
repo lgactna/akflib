@@ -44,6 +44,9 @@ def generate_import_statements(import_paths: Iterable[str]) -> str:
             name = parts[-1]
             import_statements.append(f"from {module} import {name}")
 
+    # Remove duplicate import statements
+    import_statements = list(set(import_statements))
+
     # Sort import statements alphabetically
     import_statements.sort()
 
