@@ -152,18 +152,17 @@ class AKFModule(abc.ABC, Generic[ArgsType, ConfigType]):
     # module to function.
     dependencies: ClassVar[set[str]]
 
-    def __init_subclass__(cls) -> None:
+    @staticmethod
+    def check_required_attributes(
+        cls: Type[Any], required_attributes: list[str]
+    ) -> None:
         """
         Check that subclasses have required attributes.
         """
-        super().__init_subclass__()
-
-        REQUIRED_ATTRIBUTES = ["aliases", "arg_model", "config_model", "dependencies"]
-
         # Get class annotations
         annotations = getattr(cls, "__annotations__", {})
 
-        for attr in REQUIRED_ATTRIBUTES:
+        for attr in required_attributes:
             # Check if attribute exists either as a value or as an annotation --
             # for concrete classes, we care that it has a value (hasattr), but
             # for abstract classes, we care that it has an annotation.
@@ -176,6 +175,15 @@ class AKFModule(abc.ABC, Generic[ArgsType, ConfigType]):
                     f"Can't instantiate abstract class {cls.__name__} "
                     f"without required attribute '{attr}'"
                 )
+
+    def __init_subclass__(cls) -> None:
+        """
+        Check that subclasses have required attributes.
+        """
+        super().__init_subclass__()
+
+        REQUIRED_ATTRIBUTES = ["aliases", "arg_model", "config_model", "dependencies"]
+        cls.check_required_attributes(cls, REQUIRED_ATTRIBUTES)
 
     @staticmethod
     def get_hypervisor_var(state: dict[str, Any]) -> str | None:
