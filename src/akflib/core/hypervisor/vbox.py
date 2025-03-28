@@ -222,7 +222,7 @@ class VBoxHypervisor(HypervisorABC):
             `AdditionsRunLevelType` enumeration.
         :return: True if the specified level is reached within wait_period,
             False otherwise.
-        """        
+        """
         # Instant check
         # mypy doesn't have access to the vboxapi library, so it doesn't know
         # this bool compare is correct
