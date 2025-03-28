@@ -686,17 +686,34 @@ class VBoxHypervisor(HypervisorABC):
         self.session.console.debugger.dump_guest_core(output_path.resolve().as_posix())
         return True
 
-    def _get_non_host_adapter(self, limit: int = 4) -> vboxlib.INetworkAdapter | None:
+    def _get_adapter(
+        self, limit: int = 4, host: bool = False
+    ) -> vboxlib.INetworkAdapter | None:
         """
         Get the first non-host-only adapter attached to the VM.
 
         :param limit: The maximum number of network adapters to check.
         """
-        logger.info("Searching for first host-only adapter")
+        if host:
+            logger.info("Searching for first host-only adapter")
+        else:
+            logger.info(
+                "Searching for first non-host-only adapter (typically connected to Internet)"
+            )
+
         for i in range(0, limit):
             adapter = self.machine.get_network_adapter(i)
-            if adapter.attachment_type != vboxlib.NetworkAttachmentType.host_only:
+            if (
+                host
+                and adapter.attachment_type == vboxlib.NetworkAttachmentType.host_only
+            ):
                 logger.info(f"Returning adapter {i} as the host-only adapter")
+                return adapter
+            elif (
+                not host
+                and adapter.attachment_type != vboxlib.NetworkAttachmentType.host_only
+            ):
+                logger.info(f"Returning adapter {i} as the non-host-only adapter")
                 return adapter
 
         return None
@@ -705,9 +722,9 @@ class VBoxHypervisor(HypervisorABC):
         """
         Get the IP address of the maintenance (RPyC) network interface.
         """
-        adapter = self._get_non_host_adapter()
+        adapter = self._get_adapter(host=True)
         if adapter is None:
-            raise RuntimeError("No non-host-only adapter found.")
+            raise RuntimeError("No host-only adapter found.")
 
         ip_prop = self.machine.enumerate_guest_properties(
             f"/VirtualBox/GuestInfo/Net/{adapter.slot}/V4/IP"
@@ -736,7 +753,7 @@ class VBoxHypervisor(HypervisorABC):
         """
         # Iterate through all network adapters
         if adapter_id is None:
-            adapter = self._get_non_host_adapter()
+            adapter = self._get_adapter(host=False)
             if adapter is None:
                 raise RuntimeError("No non-host-only adapter found.")
             adapter_id = adapter.slot
@@ -762,7 +779,7 @@ class VBoxHypervisor(HypervisorABC):
         This method is equivalent to the VMPOP function `stop_network_capture()`.
         """
         if adapter_id is None:
-            adapter = self._get_non_host_adapter()
+            adapter = self._get_adapter(host=False)
             if adapter is None:
                 raise RuntimeError("No non-host-only adapter found.")
             adapter_id = adapter.slot
