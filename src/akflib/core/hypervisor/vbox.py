@@ -327,7 +327,7 @@ class VBoxHypervisor(HypervisorABC):
         else:
             # ACPI shutdown
             self.session.console.power_button()
-            while self.machine.state != vboxlib.MachineState.PoweredOff:
+            while self.machine.state != vboxlib.MachineState.powered_off:
                 pass
 
         return True
