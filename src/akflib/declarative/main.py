@@ -186,6 +186,7 @@ def translation_entrypoint(
     for action in scenario.actions:
         module = modules[action.module]
         result += f"# {action.name}\n"
+        result += f"logger.info(r'Executing action: {action.name}')\n"
         result += generate_code_from_module(
             module, action.args, scenario.config | action.config, state
         )
