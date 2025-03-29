@@ -159,13 +159,28 @@ def translation_entrypoint(
     # fmt: on
 
     # Generate the import statements by collecting the dependencies declared
-    # by each resolved module
-    dependencies = set()
+    # by each resolved module.
+    #
+    # `logging` and `sys` are always required to set up the log handler.
+    dependencies = {"logging", "sys"}
     for action in scenario.actions:
         module = modules[action.module]
         dependencies.update(module.dependencies)
 
     result += generate_import_statements(dependencies) + "\n\n"
+    
+    # fmt: off
+    result += align_text('''
+        # Set up logging
+        logging.basicConfig(
+            handlers=[logging.StreamHandler(sys.stdout)],
+            level=logging.INFO,
+            format="%(filename)s:%(lineno)d | %(asctime)s | [%(levelname)s] - %(message)s",
+            datefmt="%Y-%m-%d %H:%M:%S",
+        )
+        logger = logging.getLogger()
+    ''') + "\n\n"
+    # fmt: on
 
     # Generate the code for each action
     for action in scenario.actions:
