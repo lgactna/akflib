@@ -10,23 +10,13 @@ from pathlib import Path
 from types import UnionType
 from typing import Any, ClassVar, Iterable, Type, Union, get_args, get_origin
 
-from caselib.uco.core import Bundle, UcoObject
+from caselib.uco.core import Bundle, UcoObject, UcoThing
 
 logger = logging.getLogger(__name__)
 
 
 def add_objects_recursive(obj: UcoObject, akf_bundle: "AKFBundle") -> None:
     akf_bundle._add_obj_to_index(obj)
-
-    if not isinstance(akf_bundle.object, list):
-        # If the bundle is not a list, convert it to a list
-        if akf_bundle.object is None:
-            akf_bundle.object = []
-        else:
-            akf_bundle.object = [akf_bundle.object]
-
-    assert isinstance(akf_bundle.object, list)
-    akf_bundle.object.append(obj)
 
     # For object types that have fields accepting more UcoObjects,
     # extract and process those as well
@@ -66,10 +56,27 @@ class AKFBundle(Bundle):
         """
         self._object_index[type(obj)].append(obj)
 
+    def _add_obj_to_obj_list(self, obj: UcoObject) -> None:
+        """
+        Add an object to the `object` attribute, converting it to a list if
+        necessary.
+        """
+
+        if not isinstance(self.object, list):
+            # If the bundle is not a list, convert it to a list
+            if self.object is None:
+                self.object = []
+            else:
+                self.object = [self.object]
+
+        assert isinstance(self.object, list)
+        self.object.append(obj)
+
     def add_object(self, obj: UcoObject) -> None:
         """
         Add a UCO object to the bundle and update the internal object index.
         """
+        self._add_obj_to_obj_list(obj)
         add_objects_recursive(obj, self)
 
     def add_objects(self, objs: Iterable[UcoObject]) -> None:
@@ -77,6 +84,7 @@ class AKFBundle(Bundle):
         Add a list of UCO objects to the bundle and update the internal object index.
         """
         for obj in objs:
+            self._add_obj_to_obj_list(obj)
             add_objects_recursive(obj, self)
 
     def write_to_jsonld(self, output_path: Path, indent: int = 2) -> None:
@@ -141,7 +149,14 @@ def get_uco_list_fields(model_class: Type[UcoObject]) -> list[str]:
 
 def _is_uco_list(annotation: Any) -> bool:
     """
-    Check if an annotation is list[UcoObject] or list of any UcoObject subclass.
+    Check if an annotation is list[UcoThing] or list of any UcoThing subclass.
+
+    Some things, particularly facets, are not subclasses of UcoObject - they're
+    subclasses of UcoThing. The majority of the code here checks for UcoObject
+    since that's what's expected inside the `object` attribute of a bundle.
+
+    However, we actually care about all objects here, so we check for the more
+    general UcoThing type instead.
     """
     if get_origin(annotation) is not list:
         return False
@@ -150,9 +165,9 @@ def _is_uco_list(annotation: Any) -> bool:
     if len(args) != 1:
         return False
 
-    # Check if arg is UcoObject or a subclass of UcoObject
+    # Check if list annotation is UcoThing or a subclass of UcoThing.
     arg_type = args[0]
-    if isinstance(arg_type, type) and issubclass(arg_type, UcoObject):
+    if isinstance(arg_type, type) and issubclass(arg_type, UcoThing):
         return True
 
     return False
