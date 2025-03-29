@@ -168,7 +168,7 @@ def translation_entrypoint(
         dependencies.update(module.dependencies)
 
     result += generate_import_statements(dependencies) + "\n\n"
-    
+
     # fmt: off
     result += align_text('''
         # Set up logging
