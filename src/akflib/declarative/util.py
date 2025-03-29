@@ -50,4 +50,4 @@ def auto_format(text: str, state: dict[str, Any]) -> str:
 
     The `indentation` key is used to determine where to indent the text.
     """
-    return indent_text(align_text(text), state.get("indentation", 0)) + "\n"
+    return indent_text(align_text(text), state.get("indentation_level", 0)) + "\n"
