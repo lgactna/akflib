@@ -10,15 +10,25 @@ from pathlib import Path
 from types import UnionType
 from typing import Any, ClassVar, Iterable, Type, Union, get_args, get_origin
 
-from caselib.uco.core import Bundle, UcoThing
+from caselib.uco.core import Bundle, UcoObject
 
 logger = logging.getLogger(__name__)
 
 
-def add_objects_recursive(obj: UcoThing, akf_bundle: "AKFBundle") -> None:
+def add_objects_recursive(obj: UcoObject, akf_bundle: "AKFBundle") -> None:
     akf_bundle._add_obj_to_index(obj)
 
-    # For object types that have fields accepting more UcoThings,
+    if not isinstance(akf_bundle.object, list):
+        # If the bundle is not a list, convert it to a list
+        if akf_bundle.object is None:
+            akf_bundle.object = []
+        else:
+            akf_bundle.object = [akf_bundle.object]
+
+    assert isinstance(akf_bundle.object, list)
+    akf_bundle.object.append(obj)
+
+    # For object types that have fields accepting more UcoObjects,
     # extract and process those as well
     list_fields = get_uco_list_fields(type(obj))
     for field in list_fields:
@@ -26,7 +36,7 @@ def add_objects_recursive(obj: UcoThing, akf_bundle: "AKFBundle") -> None:
         if isinstance(field_value, list):
             for item in field_value:
                 add_objects_recursive(item, akf_bundle)
-        elif issubclass(field_value, UcoThing):
+        elif issubclass(field_value, UcoObject):
             add_objects_recursive(field_value, akf_bundle)
 
 
@@ -48,21 +58,21 @@ class AKFBundle(Bundle):
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
-        self._object_index: dict[Type[UcoThing], list[UcoThing]] = defaultdict(list)
+        self._object_index: dict[Type[UcoObject], list[UcoObject]] = defaultdict(list)
 
-    def _add_obj_to_index(self, obj: UcoThing) -> None:
+    def _add_obj_to_index(self, obj: UcoObject) -> None:
         """
         Add a UCO object to the internal object index, non-recursively.
         """
         self._object_index[type(obj)].append(obj)
 
-    def add_object(self, obj: UcoThing) -> None:
+    def add_object(self, obj: UcoObject) -> None:
         """
         Add a UCO object to the bundle and update the internal object index.
         """
         add_objects_recursive(obj, self)
 
-    def add_objects(self, objs: Iterable[UcoThing]) -> None:
+    def add_objects(self, objs: Iterable[UcoObject]) -> None:
         """
         Add a list of UCO objects to the bundle and update the internal object index.
         """
@@ -87,21 +97,21 @@ class AKFBundle(Bundle):
         if isinstance(bundle.object, list):
             for obj in bundle.object:
                 add_objects_recursive(obj, akf_bundle)
-        elif isinstance(bundle.object, UcoThing):
+        elif isinstance(bundle.object, UcoObject):
             add_objects_recursive(bundle.object, akf_bundle)
 
         return akf_bundle
 
 
-def get_uco_list_fields(model_class: Type[UcoThing]) -> list[str]:
+def get_uco_list_fields(model_class: Type[UcoObject]) -> list[str]:
     """
-    Extract all fields from a UcoThing subclass that allows for lists of UcoThings.
+    Extract all fields from a UcoObject subclass that allows for lists of UcoObjects.
 
     Note that this function does not check for fields that only allow exactly
-    one UcoThing, since this should never be the case for the caselib bindings.
+    one UcoObject, since this should never be the case for the caselib bindings.
 
-    :param model_class: A UcoThing subclass.
-    :return: A list of field names that allow for lists of UcoThings.
+    :param model_class: A UcoObject subclass.
+    :return: A list of field names that allow for lists of UcoObjects.
     """
     result = []
     fields = model_class.model_fields
@@ -109,12 +119,12 @@ def get_uco_list_fields(model_class: Type[UcoThing]) -> list[str]:
     for field_name, field_info in fields.items():
         annotation = field_info.annotation
 
-        # Check if the annotation is directly list[UcoThing] or list[UcoSubclass]
+        # Check if the annotation is directly list[UcoObject] or list[UcoSubclass]
         if _is_uco_list(annotation):
             result.append(field_name)
             continue
 
-        # Check if it's a Union/Optional that contains list[UcoThing] or list[UcoSubclass]
+        # Check if it's a Union/Optional that contains list[UcoObject] or list[UcoSubclass]
         #
         # Fun fact: Union (i.e. typing.Union) and using | (i.e. UnionType)
         # are different.
@@ -131,7 +141,7 @@ def get_uco_list_fields(model_class: Type[UcoThing]) -> list[str]:
 
 def _is_uco_list(annotation: Any) -> bool:
     """
-    Check if an annotation is list[UcoThing] or list of any UcoThing subclass.
+    Check if an annotation is list[UcoObject] or list of any UcoObject subclass.
     """
     if get_origin(annotation) is not list:
         return False
@@ -140,9 +150,9 @@ def _is_uco_list(annotation: Any) -> bool:
     if len(args) != 1:
         return False
 
-    # Check if arg is UcoThing or a subclass of UcoThing
+    # Check if arg is UcoObject or a subclass of UcoObject
     arg_type = args[0]
-    if isinstance(arg_type, type) and issubclass(arg_type, UcoThing):
+    if isinstance(arg_type, type) and issubclass(arg_type, UcoObject):
         return True
 
     return False
@@ -172,7 +182,7 @@ class CASERenderer(ABC):
     group: ClassVar[str]
 
     # The UCO/CASE object types that this renderer can handle.
-    object_types: ClassVar[list[Type[UcoThing]]]
+    object_types: ClassVar[list[Type[UcoObject]]]
 
     def __init_subclass__(cls) -> None:
         """
@@ -187,7 +197,7 @@ class CASERenderer(ABC):
                 )
 
     @classmethod
-    def _extract_related_objects(cls, bundle: Bundle) -> list[UcoThing]:
+    def _extract_related_objects(cls, bundle: Bundle) -> list[UcoObject]:
         """
         Recursively get all objects of the types declared in `object_types` from a
         UCO bundle.
@@ -200,7 +210,7 @@ class CASERenderer(ABC):
                 objects.extend(bundle._object_index.get(obj_type, []))
             return objects
 
-        def _extract_objects_recursive(obj: UcoThing) -> list[UcoThing]:
+        def _extract_objects_recursive(obj: UcoObject) -> list[UcoObject]:
             r_objects = []
 
             # Extract objects of the types declared in `object_types`
@@ -209,7 +219,7 @@ class CASERenderer(ABC):
                     logger.debug(f"Extracted object: {obj}")
                     r_objects.append(obj)
 
-            # For object types that have fields accepting more UcoThings,
+            # For object types that have fields accepting more UcoObjects,
             # extract and process those as well
             list_fields = get_uco_list_fields(type(obj))
             for field in list_fields:
@@ -217,7 +227,7 @@ class CASERenderer(ABC):
                 if isinstance(field_value, list):
                     for item in field_value:
                         r_objects.extend(_extract_objects_recursive(item))
-                elif issubclass(field_value, UcoThing):
+                elif issubclass(field_value, UcoObject):
                     r_objects.extend(_extract_objects_recursive(field_value))
 
             return r_objects
@@ -225,14 +235,14 @@ class CASERenderer(ABC):
         if isinstance(bundle.object, list):
             for obj in bundle.object:
                 objects.extend(_extract_objects_recursive(obj))
-        elif isinstance(bundle.object, UcoThing):
+        elif isinstance(bundle.object, UcoObject):
             objects.extend(_extract_objects_recursive(bundle.object))
 
         return objects
 
     @classmethod
     @abstractmethod
-    def render_objects(cls, objects: list[UcoThing], base_asset_folder: Path) -> str:
+    def render_objects(cls, objects: list[UcoObject], base_asset_folder: Path) -> str:
         """
         Process a list of UCO objects and return a Markdown document.
 
