@@ -98,10 +98,10 @@ class AKFBundle(Bundle):
         """
         with open(output_path, "wt+") as f:
             data = self.model_dump(serialize_as_any=True)
-            
+
             # Overwrite the @type and pretend we're actually a Bundle
-            data['@type'] = "uco-core:Bundle"
-            
+            data["@type"] = "uco-core:Bundle"
+
             f.write(json.dumps(data, indent=indent))
 
     @classmethod
