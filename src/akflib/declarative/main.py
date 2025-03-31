@@ -8,7 +8,6 @@ From akflib, the following state variables can be expected:
 - akflib.akf_bundle: An AKFBundle object.
 """
 
-import importlib
 import logging
 import sys
 from pathlib import Path
@@ -20,6 +19,7 @@ from pydantic_yaml import parse_yaml_file_as
 
 from akflib.declarative.core import AKFModule, AKFScenario
 from akflib.declarative.util import align_text
+from akflib.utility.imports import get_objects_by_name
 
 # Set up logging
 logging.basicConfig(
@@ -66,30 +66,13 @@ def get_akf_modules(
     aliases, and check if a module that can't be found using a fully-qualified name
     exists in the preloaded modules.
     """
-    imported_objects = {}
-    for path in module_paths:
-        parts = path.split(".")
-        module_path = ".".join(parts[:-1])
-        object_name = parts[-1]
+    result = get_objects_by_name(module_paths)
 
-        try:
-            module = importlib.import_module(module_path)
-        except ImportError:
-            raise ImportError(f"Could not import module {module_path}")
+    for obj in result.values():
+        if not issubclass(obj, AKFModule):
+            raise TypeError(f"{obj} is not a subclass of AKFModule")
 
-        try:
-            akf_module = getattr(module, object_name)
-        except AttributeError:
-            raise ImportError(
-                f"Could not import object {object_name} from module {module_path}"
-            )
-
-        assert issubclass(
-            akf_module, AKFModule
-        ), f"Module {akf_module} is not a subclass of AKFModule"
-
-        imported_objects[path] = akf_module
-    return imported_objects
+    return result
 
 
 def execute_module(

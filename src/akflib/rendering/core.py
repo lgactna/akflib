@@ -1,10 +1,18 @@
+import logging
+import os
+import re
+import shutil
+import subprocess
 from collections import defaultdict
 from pathlib import Path
-from typing import Type
+from typing import Iterable, Type
 
 from caselib.uco.core import Bundle
 
 from akflib.rendering.objs import CASERenderer
+from akflib.utility.imports import get_objects_by_name
+
+logger = logging.getLogger(__name__)
 
 
 def render_bundle(
@@ -64,6 +72,30 @@ def generate_documents(
     return documents
 
 
+def check_if_eisvogel_installed(pandoc_path: Path) -> bool:
+    """
+    Check if the Eisvogel template is installed for Pandoc.
+
+    :param pandoc_path: The path to the Pandoc executable.
+    :return: True if the Eisvogel template is installed, False otherwise.
+    """
+    try:
+        # Get the user data directory
+        result = subprocess.run(
+            [pandoc_path, "--version"],
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        match = re.search(r"^User data directory:\s*(.*)$", result.stdout, re.MULTILINE)
+        assert match
+
+        return (Path(match.group(1)) / "templates/eisvogel.latex").exists()
+
+    except subprocess.CalledProcessError:
+        return False
+
+
 def generate_pdfs(
     rendered_documents: dict[str, str],
     output_folder: Path,
@@ -82,14 +114,44 @@ def generate_pdfs(
     :param base_asset_folder: The folder where the assets are stored.
     :param pandoc_path: The path to the Pandoc executable.
     """
-    # TODO: can we just auto-detect where pandoc is
+    # For each group in rendered_documents, generate a PDF using Pandoc.
+    for group_name, document in rendered_documents.items():
+        # Generate the output file name
+        output_file = output_folder / f"{group_name}.pdf"
 
-    # TODO: steal fastlabel's code
+        # Write the document to a temporary file and add it to the command
+        temp_file = output_file.with_suffix(".md")
+        with open(temp_file, "w", encoding="utf-8") as f:
+            f.write(document)
 
-    # TODO: actually implement some renderers and test if this whole pipeline
-    #       even works
+        # Generate the command to run Pandoc
+        command = [
+            pandoc_path.as_posix(),
+            temp_file.as_posix(),
+            "-o",
+            output_file.as_posix(),
+            "-f",
+            "markdown",
+            "-t",
+            "pdf",
+            "--standalone",
+            "--resource-path",
+            base_asset_folder.as_posix(),
+        ]
 
-    raise NotImplementedError
+        # Check if the Eisvogel template is installed
+        if check_if_eisvogel_installed(pandoc_path):
+            logger.info("Eisvogel template is installed.")
+            command.append("--template=eisvogel")
+        else:
+            logger.warning(
+                "Eisvogel template is not installed. Using default template."
+            )
+
+        # Run the command
+        s = subprocess.run(command, check=True, capture_output=True)
+        logger.info(f"Pandoc stdout: {s.stdout.decode('utf-8')}")
+        logger.info(f"Pandoc stderr: {s.stderr.decode('utf-8')}")
 
 
 def bundle_to_pdf(
@@ -121,3 +183,55 @@ def bundle_to_pdf(
     documents = generate_documents(outputs, group_renderers)
 
     generate_pdfs(documents, output_folder, base_asset_folder, pandoc_path)
+
+
+def get_renderer_classes(renderer_paths: Iterable[str]) -> list[Type[CASERenderer]]:
+    """
+    Given a list of fully-qualified import paths, render their corresponding
+    CASERenderer classes.
+    """
+    result = get_objects_by_name(renderer_paths)
+
+    for obj in result.values():
+        if not issubclass(obj, CASERenderer):
+            raise TypeError(f"{obj} is not a subclass of CASERenderer")
+
+    return list(result.values())
+
+
+def get_pandoc_path() -> Path | None:
+    """
+    Make a best-effort attempt to find the Pandoc executable.
+
+    Paths are derived from this SO answer:
+    https://stackoverflow.com/questions/28032436/where-is-pandoc-installed-on-windows
+    """
+
+    # If Pandoc is on PATH, just use that
+    pandoc_from_path = shutil.which("pandoc")
+    if pandoc_from_path:
+        return Path(pandoc_from_path)
+
+    # Check if Pandoc was probably installed for all users (either Program
+    # Files or Program Files (x86))
+    path = Path("C:/Program Files/Pandoc/pandoc.exe")
+    if path.is_file():
+        return path
+
+    path = Path("C:/Program Files (x86)/Pandoc/pandoc.exe")
+    if path.is_file():
+        return path
+
+    # Check if Pandoc was just installed for the current user
+    local_appdata_path = os.getenv("LOCALAPPDATA")
+    if not local_appdata_path:
+        logger.warning("LOCALAPPDATA environment variable is not set")
+        # Give up
+        return None
+
+    path = Path(local_appdata_path) / "Pandoc/pandoc.exe"
+    if path.is_file():
+        return path
+
+    # we tried
+    return None
