@@ -146,6 +146,8 @@ def generate_pdfs(
             "--standalone",
             "--resource-path",
             base_asset_folder.as_posix(),
+            "-V",
+            "colorlinks=true",
         ]
 
         # Check if the Eisvogel template is installed
