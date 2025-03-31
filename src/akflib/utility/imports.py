@@ -2,8 +2,8 @@
 Utilities for locating and importing modules and packages.
 """
 
-from typing import Any, Iterable
 import importlib
+from typing import Any, Iterable
 
 
 def get_objects_by_name(

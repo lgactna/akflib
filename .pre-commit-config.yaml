@@ -15,6 +15,7 @@ repos:
         - click
         - dfvfs
         - git+https://github.com/lgactna/CASE-pydantic.git@dd22642123a8781536214edc7dab5e69e59e6f49
+        - types-tabulate
 - repo: https://github.com/pycqa/flake8
   rev: 5.0.4
   hooks:
