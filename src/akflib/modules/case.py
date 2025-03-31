@@ -181,6 +181,8 @@ class RenderAKFBundleModule(AKFModule[RenderAKFBundleModuleArgs, NullConfig]):
             result += f"pandoc_path = Path({args.pandoc_path.as_posix()})\n"
         else:
             result += "pandoc_path = get_pandoc_path()\n"
+            result += "if pandoc_path is None:\n"
+            result += '    raise RuntimeError("Unable to find path to Pandoc executable (make sure it is on PATH)")\n'
         result += "\n"
 
         result += f'pandoc_output_folder = Path("{args.output_folder.as_posix()}")\n'
