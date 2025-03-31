@@ -69,4 +69,4 @@ class PrefetchRenderer(CASERenderer):
         # Render with tabulate
         result += tabulate(data, headers=headers, tablefmt="github") + "\n\n"
 
-        raise NotImplementedError
+        return result
