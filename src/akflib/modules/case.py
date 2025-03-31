@@ -183,7 +183,7 @@ class RenderAKFBundleModule(AKFModule[RenderAKFBundleModuleArgs, NullConfig]):
             result += "pandoc_path = get_pandoc_path()\n"
         result += "\n"
 
-        result += f'pandoc_output_folder = Path("{args.output_folder.as_posix()}"),\n'
+        result += f'pandoc_output_folder = Path("{args.output_folder.as_posix()}")\n'
         result += "pandoc_output_folder.mkdir(parents=True, exist_ok=True)\n"
         result += "\n"
 
