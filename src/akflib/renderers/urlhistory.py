@@ -70,19 +70,20 @@ class URLHistoryRenderer(CASERenderer):
             # If we have browserInformation and it's an Application object,
             # extract the applicationIdentifier
             app = facet.browserInformation
-            app_id = f"Browser: unknown ({idx})"
+            browser_name = "<unknown>"
             if isinstance(app, Application):
                 app_facet = app.hasFacet
                 if isinstance(app_facet, list) and len(app_facet) > 0:
                     app_facet = app_facet[0]
                 if isinstance(app_facet, ApplicationFacet):
-                    app_id = (
+                    browser_name = (
                         app_facet.applicationIdentifier
                         if app_facet.applicationIdentifier
-                        else "?"
+                        else "<unknown>"
                     )
 
-            result += f"### Browser: {app_id} ({idx})\n\n"
+            logger.info(f"Parsing URLHistory object for {browser_name=}")
+            result += f"### Browser: {browser_name} ({idx})\n\n"
 
             if not facet.urlHistoryEntry:
                 result += "No URL history entries found.\n\n"
@@ -92,7 +93,8 @@ class URLHistoryRenderer(CASERenderer):
                 facet.urlHistoryEntry = [facet.urlHistoryEntry]
 
             # Now start extracting individual URLHistoryEntries, store in a table
-            headers = ["URL", "Title", "Last accessed", "Visit count"]
+            logger.info(f"Adding {len(facet.urlHistoryEntry)} entries")
+            headers = ["Title", "Last accessed", "Visit count"]
             data: list[list[Any]] = []
             for history_entry in facet.urlHistoryEntry:
                 if not isinstance(history_entry, URLHistoryEntry):
@@ -123,7 +125,12 @@ class URLHistoryRenderer(CASERenderer):
                     continue
 
                 url_entry = url_facet.fullValue
-                title = history_entry.pageTitle if history_entry.pageTitle else "?"
+                title = (
+                    history_entry.pageTitle if history_entry.pageTitle else "<no title>"
+                )
+
+                url_markdown = f"[{title}]({url_entry})"
+
                 last_accessed = (
                     history_entry.lastVisit.strftime("%Y-%m-%dT%H:%M:%S")
                     if history_entry.lastVisit
@@ -133,7 +140,7 @@ class URLHistoryRenderer(CASERenderer):
                     history_entry.visitCount if history_entry.visitCount else "?"
                 )
 
-                data.append([url_entry, title, last_accessed, visit_count])
+                data.append([url_markdown, last_accessed, visit_count])
 
             # Render using tabulate
             result += tabulate(data, headers=headers, tablefmt="github") + "\n\n"

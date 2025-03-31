@@ -31,6 +31,7 @@ def render_bundle(
 
     results = {}
     for renderer_class in renderers:
+        logger.info(f"Running renderer: {renderer_class.name} ({renderer_class})")
         results[renderer_class] = renderer_class.render_bundle(
             bundle, base_asset_folder
         )
@@ -51,14 +52,20 @@ def generate_documents(
     as the dictionary key "default".
     """
 
+    logger.info(f"Compiling documents from {len(rendered_outputs)} renderers")
+
     # Begin by grouping renderers as needed.
     grouped_outputs: dict[str, list[str]] = defaultdict(list)
     if group_renderers:
         for renderer_class, output in rendered_outputs.items():
             group_name = renderer_class.group
             grouped_outputs[group_name].append(output)
+            logger.info(f"Grouped documents for {group_name=}")
     else:
-        grouped_outputs = {"default": list(rendered_outputs.values())}
+        logger.info("Grouping disabled, using single group")
+        grouped_outputs = {"Results": list(rendered_outputs.values())}
+
+    logger.info(f"Produced {len(grouped_outputs)} document(s)")
 
     # For each group, combine them into a single document. Insert two newlines
     # between each document to separate them, and start the document with a level
@@ -114,6 +121,8 @@ def generate_pdfs(
     :param base_asset_folder: The folder where the assets are stored.
     :param pandoc_path: The path to the Pandoc executable.
     """
+    logger.info(f"Invoking Pandoc (at {pandoc_path})")
+
     # For each group in rendered_documents, generate a PDF using Pandoc.
     for group_name, document in rendered_documents.items():
         # Generate the output file name
@@ -141,14 +150,13 @@ def generate_pdfs(
 
         # Check if the Eisvogel template is installed
         if check_if_eisvogel_installed(pandoc_path):
-            logger.info("Eisvogel template is installed.")
+            logger.info("Eisvogel template is installed, using it")
             command.append("--template=eisvogel")
         else:
-            logger.warning(
-                "Eisvogel template is not installed. Using default template."
-            )
+            logger.info("Eisvogel template is not installed")
 
         # Run the command
+        logger.info(f"Running command: {' '.join(command)}")
         s = subprocess.run(command, check=True, capture_output=True)
         logger.info(f"Pandoc stdout: {s.stdout.decode('utf-8')}")
         logger.info(f"Pandoc stderr: {s.stderr.decode('utf-8')}")

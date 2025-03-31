@@ -2,6 +2,7 @@
 Render information from (a sequence of) WindowsPrefetch objects.
 """
 
+import logging
 from pathlib import Path
 from typing import ClassVar, Type
 
@@ -10,6 +11,8 @@ from caselib.uco.observable import WindowsPrefetch, WindowsPrefetchFacet
 from tabulate import tabulate
 
 from akflib.rendering.objs import CASERenderer
+
+logger = logging.getLogger(__name__)
 
 
 class PrefetchRenderer(CASERenderer):
@@ -38,6 +41,8 @@ class PrefetchRenderer(CASERenderer):
 
         headers = ["Application", "Times executed", "Last run"]
         data = []
+
+        logger.info(f"Processing {len(objects)} WindowsPrefetch objects")
 
         # Go through each WindowsPrefetch object
         for obj in objects:
