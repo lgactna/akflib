@@ -236,7 +236,8 @@ class RenderAKFBundleModule(AKFModule[RenderAKFBundleModuleArgs, NullConfig]):
 
         args.pandoc_path = args.pandoc_path.resolve()
         logger.info(f"Pandoc path: {args.pandoc_path}")
-        args.pandoc_path.mkdir(parents=True, exist_ok=True)
+
+        args.output_folder.mkdir(parents=True, exist_ok=True)
 
         # Perform the actual rendering
         bundle_to_pdf(
