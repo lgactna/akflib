@@ -48,7 +48,9 @@ class URLHistoryRenderer(CASERenderer):
         result += "## Browser histories\n\n"
 
         # For each URLHistory object, which is assumed to be a single browser,
-        # create a new level-3 section and list out the details
+        # create a new level-3 section and list out the details.
+        #
+        # TODO: yes this should be broken up into more functions lol
         for idx, obj in enumerate(objects, start=1):
             if not isinstance(obj, URLHistory):
                 logger.warning(f"Object {obj} is not a URLHistory object, skipping")
@@ -70,7 +72,7 @@ class URLHistoryRenderer(CASERenderer):
             # If we have browserInformation and it's an Application object,
             # extract the applicationIdentifier
             app = facet.browserInformation
-            browser_name = "<unknown>"
+            browser_name = "\\<unknown\\>"
             if isinstance(app, Application):
                 app_facet = app.hasFacet
                 if isinstance(app_facet, list) and len(app_facet) > 0:
@@ -79,7 +81,7 @@ class URLHistoryRenderer(CASERenderer):
                     browser_name = (
                         app_facet.applicationIdentifier
                         if app_facet.applicationIdentifier
-                        else "<unknown>"
+                        else "\\<unknown\\>"
                     )
 
             logger.info(f"Parsing URLHistory object for {browser_name=}")
@@ -126,7 +128,9 @@ class URLHistoryRenderer(CASERenderer):
 
                 url_entry = url_facet.fullValue
                 title = (
-                    history_entry.pageTitle if history_entry.pageTitle else "<no title>"
+                    history_entry.pageTitle
+                    if history_entry.pageTitle
+                    else "\\<no title\\>"
                 )
 
                 url_markdown = f"[{title}]({url_entry})"
@@ -142,7 +146,18 @@ class URLHistoryRenderer(CASERenderer):
 
                 data.append([url_markdown, last_accessed, visit_count])
 
-            # Render using tabulate
-            result += tabulate(data, headers=headers, tablefmt="github") + "\n\n"
+            # Render using tabulate. Pandoc respects *relative* columns widths;
+            # if we don't specify a max column width for the URL column, then
+            # a really long URL will cause the other columns to be microscopic
+            # in size.
+            result += (
+                tabulate(
+                    data,
+                    headers=headers,
+                    tablefmt="grid",
+                    maxcolwidths=[40, None, None],
+                )
+                + "\n\n"
+            )
 
         return result

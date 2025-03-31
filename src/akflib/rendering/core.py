@@ -140,7 +140,7 @@ def generate_pdfs(
             "-o",
             output_file.as_posix(),
             "-f",
-            "markdown",
+            "markdown+multiline_tables+grid_tables",
             "-t",
             "pdf",
             "--standalone",
