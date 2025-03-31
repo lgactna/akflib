@@ -141,9 +141,9 @@ class RenderAKFBundleModule(AKFModule[RenderAKFBundleModuleArgs, NullConfig]):
     config_model = NullConfig
 
     dependencies: ClassVar[set[str]] = {
-        "akflib.rendering.bundle_to_pdf",
-        "akflib.rendering.get_pandoc_path",
-        "akflib.rendering.get_renderer_classes",
+        "akflib.rendering.core.bundle_to_pdf",
+        "akflib.rendering.core.get_pandoc_path",
+        "akflib.rendering.core.get_renderer_classes",
         "pathlib.Path",
     }
 
