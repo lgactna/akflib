@@ -28,13 +28,15 @@ def get_objects_by_name(
         try:
             module = importlib.import_module(module_path)
         except ImportError:
-            raise ImportError(f"Could not import module {module_path}")
+            raise ImportError(
+                f"Could not import module {module_path}, is it installed?"
+            )
 
         try:
             akf_module = getattr(module, object_name)
         except AttributeError:
             raise ImportError(
-                f"Could not import object {object_name} from module {module_path}"
+                f"Could not import object {object_name} from module {module_path}, is it installed?"
             )
 
         imported_objects[path] = akf_module
