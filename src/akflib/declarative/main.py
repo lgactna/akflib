@@ -9,6 +9,7 @@ From akflib, the following state variables can be expected:
 """
 
 import logging
+import random
 import sys
 from pathlib import Path
 from typing import Any, Iterable, Type
@@ -191,6 +192,9 @@ def execution_entrypoint(
     # Global state variables
     state: dict[str, Any] = {}
 
+    # Set global random seed
+    random.seed(scenario.seed)
+
     # Execute each action in sequence
     for action in scenario.actions:
         module = modules[action.module]
@@ -218,7 +222,7 @@ def translation_entrypoint(
     # by each resolved module.
     #
     # `logging` and `sys` are always required to set up the log handler.
-    dependencies = {"logging", "sys"}
+    dependencies = {"logging", "random", "sys"}
     for action in scenario.actions:
         module = modules[action.module]
         dependencies.update(module.dependencies)
@@ -237,6 +241,9 @@ def translation_entrypoint(
         logger = logging.getLogger()
     ''') + "\n\n"
     # fmt: on
+
+    # Set raandom seed
+    result += f"random.seed({scenario.seed})\n\n"
 
     # Generate the code for each action
     for action in scenario.actions:
