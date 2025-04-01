@@ -11,14 +11,18 @@ From akflib, the following state variables can be expected:
 import logging
 import sys
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any, Iterable, Type
 
 import click
 from pydantic import ValidationError
 from pydantic_yaml import parse_yaml_file_as
 
 from akflib.declarative.core import AKFModule, AKFScenario
-from akflib.declarative.util import align_text
+from akflib.declarative.util import (
+    align_text,
+    get_all_module_classes,
+    get_full_qualname,
+)
 from akflib.utility.imports import get_objects_by_name
 
 # Set up logging
@@ -53,9 +57,63 @@ def generate_import_statements(import_paths: Iterable[str]) -> str:
     return "\n".join(import_statements)
 
 
+def build_module_cache(libraries: list[str]) -> dict[str, Type[AKFModule[Any, Any]]]:
+    """
+    Build a cache of all AKFModules in the specified libraries.
+
+    Where applicable, this also generates mappings for aliases.
+    """
+
+    def add_to_cache(
+        name: str,
+        obj: Type[AKFModule[Any, Any]],
+        cache: dict[str, Type[AKFModule[Any, Any]]],
+    ) -> None:
+        if name in cache:
+            logger.warning(
+                f'Duplicate module "{name}" found for {obj} and {cache[name]}.'
+                f" Only {cache[name]} will be available by name."
+            )
+            return
+
+        cache[name] = obj
+
+    # Start by getting all module classes from each library.
+    module_classes = []
+    for library in libraries:
+        # Get all module classes in the library
+        module_classes += get_all_module_classes(library)
+
+    # Then, build a cache of their fully qualified names.
+    module_cache: dict[str, Type[AKFModule[Any, Any]]] = {}
+    for module_class in module_classes:
+        # Get the fully qualified name of the module class
+        module_name = get_full_qualname(module_class)
+
+        # Add the module class to the cache
+        add_to_cache(module_name, module_class, module_cache)
+
+        # Also add aliases if they exist
+        if hasattr(module_class, "aliases"):
+            for alias in module_class.aliases:
+                # Add the "base", unqualified alias
+                add_to_cache(alias, module_class, module_cache)
+
+                # Then, take the fully qualified name and substitute the final
+                # component with the alias
+                alias_parts = module_name.split(".")
+                alias_parts[-1] = alias
+                alias_name = ".".join(alias_parts)
+
+                add_to_cache(alias_name, module_class, module_cache)
+
+    return module_cache
+
+
 def get_akf_modules(
     module_paths: Iterable[str],
-) -> dict[str, AKFModule[Any, Any]]:
+    cache: dict[str, Type[AKFModule[Any, Any]]] | None = None,
+) -> dict[str, Type[AKFModule[Any, Any]]]:
     """
     Attempt to import a set of AKFModules identified by their fully-qualified
     module paths.
@@ -66,17 +124,32 @@ def get_akf_modules(
     aliases, and check if a module that can't be found using a fully-qualified name
     exists in the preloaded modules.
     """
-    result = get_objects_by_name(module_paths)
+    # If a cache exists, check if a module is already in the cache. If it is,
+    # exclude it from the explicit import process.
+    if cache is None:
+        cache = {}
 
-    for obj in result.values():
-        if not issubclass(obj, AKFModule):
-            raise TypeError(f"{obj} is not a subclass of AKFModule")
+    needs_import = set(module_paths) - set(cache.keys())
 
-    return result
+    if needs_import:
+        logger.info(
+            f"The following modules were not found in the cache: {needs_import}"
+        )
+
+        result = get_objects_by_name(needs_import)
+
+        for obj in result.values():
+            if not issubclass(obj, AKFModule):
+                raise TypeError(f"{obj} is not a subclass of AKFModule")
+
+        return result
+
+    logger.info("All declared modules were found in the cache")
+    return cache
 
 
 def execute_module(
-    module: AKFModule[Any, Any],
+    module: Type[AKFModule[Any, Any]],
     args: dict[str, Any],
     config: dict[str, Any],
     state: dict[str, Any],
@@ -93,7 +166,7 @@ def execute_module(
 
 
 def generate_code_from_module(
-    module: AKFModule[Any, Any],
+    module: Type[AKFModule[Any, Any]],
     args: dict[str, Any],
     config: dict[str, Any],
     state: dict[str, Any],
@@ -110,7 +183,7 @@ def generate_code_from_module(
 
 
 def execution_entrypoint(
-    scenario: AKFScenario, modules: dict[str, AKFModule[Any, Any]]
+    scenario: AKFScenario, modules: dict[str, Type[AKFModule[Any, Any]]]
 ) -> None:
     """
     Entrypoint for the declarative translator.
@@ -126,7 +199,7 @@ def execution_entrypoint(
 
 
 def translation_entrypoint(
-    scenario: AKFScenario, modules: dict[str, AKFModule[Any, Any]]
+    scenario: AKFScenario, modules: dict[str, Type[AKFModule[Any, Any]]]
 ) -> str:
     # State variables
     state = {"indentation_level": 0}
@@ -226,18 +299,25 @@ def main(
     except ValidationError as e:
         raise RuntimeError("Invalid AKF scenario file!") from e
 
-    # TODO: do something with the libraries key - currently unused
+    logger.info("Collecting modules from declared libraries")
+    cache = build_module_cache(scenario.libraries)
+
+    logger.debug("Preloaded modules:")
+    for key, value in cache.items():
+        logger.debug(f"  {key}: {value}")
 
     # Collect a list of all individual actions declared, check if we
     # can import them and build a lookup list
-    logger.info("Collecting declared modules")
+    logger.info("Collecting explicitly declared modules")
     module_paths = {action.module for action in scenario.actions}
-    modules = get_akf_modules(module_paths)
+    explicit_modules = get_akf_modules(module_paths, cache)
 
-    logger.info("Successfully imported declared modules")
-    logger.debug("Module dictionary:")
-    for key, value in modules.items():
+    logger.debug("Newly imported modules:")
+    for key, value in explicit_modules.items():
         logger.debug(f"  {key}: {value}")
+
+    # Combine the cache and the explicitly imported modules
+    modules = cache | explicit_modules
 
     if execute:
         execution_entrypoint(scenario, modules)

@@ -25,7 +25,7 @@ class AKFBundleModule(AKFModule[NullArgs, NullConfig]):
     Create a new AKFBundle object and add it to the state dictionary.
     """
 
-    aliases = ["akf_bundle"]
+    aliases = ["akf_bundle", "create_akf_bundle"]
     arg_model = NullArgs
     config_model = NullConfig
 
