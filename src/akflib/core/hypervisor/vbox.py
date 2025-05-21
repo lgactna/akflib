@@ -684,8 +684,8 @@ class VBoxHypervisor(HypervisorABC):
         :param output_path: The path to save the memory dump to.
         :return: True if the memory dump was created, False otherwise.
         """
-
-        self.session.console.debugger.dump_guest_core(output_path.resolve().as_posix())
+        with TemporarySession(self.machine) as session:
+            session.console.debugger.dump_guest_core(output_path.resolve().as_posix(), "")
         return True
 
     def _get_adapter(
