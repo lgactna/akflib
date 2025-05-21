@@ -685,7 +685,9 @@ class VBoxHypervisor(HypervisorABC):
         :return: True if the memory dump was created, False otherwise.
         """
         with TemporarySession(self.machine) as session:
-            session.console.debugger.dump_guest_core(output_path.resolve().as_posix(), "")
+            session.console.debugger.dump_guest_core(
+                output_path.resolve().as_posix(), ""
+            )
         return True
 
     def _get_adapter(

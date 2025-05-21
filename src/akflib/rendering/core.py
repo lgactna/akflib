@@ -159,9 +159,25 @@ def generate_pdfs(
 
         # Run the command
         logger.info(f"Running command: {' '.join(command)}")
-        s = subprocess.run(command, check=True, capture_output=True)
+
+        s = subprocess.run(command, capture_output=True)
         logger.info(f"Pandoc stdout: {s.stdout.decode('utf-8')}")
         logger.info(f"Pandoc stderr: {s.stderr.decode('utf-8')}")
+        if s.returncode != 0:
+            logger.error(f"Pandoc failed with return code {s.returncode}.")
+            logger.info("Retrying with lualatex.")
+
+        # Run the command again
+        command.append("--pdf-engine=lualatex")
+        logger.info(f"Running command: {' '.join(command)}")
+        s = subprocess.run(command, capture_output=True)
+        logger.info(f"Pandoc stdout: {s.stdout.decode('utf-8')}")
+        logger.info(f"Pandoc stderr: {s.stderr.decode('utf-8')}")
+        if s.returncode != 0:
+            logger.error(f"Pandoc failed with return code {s.returncode}.")
+            raise RuntimeError(
+                f"Pandoc failed to generate PDF for {group_name} with return code {s.returncode}"
+            )
 
 
 def bundle_to_pdf(
