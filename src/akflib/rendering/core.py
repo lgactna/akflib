@@ -29,6 +29,8 @@ def render_bundle(
     :return: A dictionary that maps renderer classes to the rendered output.
     """
 
+    base_asset_folder.mkdir(parents=True, exist_ok=True)
+
     results = {}
     for renderer_class in renderers:
         logger.info(f"Running renderer: {renderer_class.name} ({renderer_class})")
