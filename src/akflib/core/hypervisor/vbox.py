@@ -578,7 +578,7 @@ class VBoxHypervisor(HypervisorABC):
         return True
 
     def set_bios_time(
-        self, time: datetime.datetime, tz: datetime._TzInfo = datetime.UTC
+        self, time: datetime.datetime, tz: datetime.tzinfo = datetime.UTC
     ) -> bool:
         """
         Set the BIOS time of the machine to the provided time.
