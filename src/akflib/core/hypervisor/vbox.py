@@ -577,7 +577,9 @@ class VBoxHypervisor(HypervisorABC):
 
         return True
 
-    def set_bios_time(self, time: datetime.datetime) -> bool:
+    def set_bios_time(
+        self, time: datetime.datetime, tz: datetime._TzInfo = datetime.UTC
+    ) -> bool:
         """
         Set the BIOS time of the machine to the provided time.
 
@@ -587,7 +589,7 @@ class VBoxHypervisor(HypervisorABC):
         # Create and lock temporary shared session
         with TemporarySession(self.machine) as session:
             # Calculate millisecond offset between host and guest time, set offset
-            time_offset = (time - datetime.datetime.now()).total_seconds() * 1000
+            time_offset = (time - datetime.datetime.now(tz=tz)).total_seconds() * 1000
             session.machine.bios_settings.time_offset = time_offset
             session.machine.save_settings()
 
@@ -759,9 +761,9 @@ class VBoxHypervisor(HypervisorABC):
             adapter_id = adapter.slot
 
         logger.info(f"Starting network capture on adapter {adapter_id}")
-        adapter = self.machine.get_network_adapter(adapter_id)
 
         with TemporarySession(self.machine) as session:
+            adapter = session.machine.get_network_adapter(adapter_id)
             adapter.trace_enabled = True
             adapter.trace_file = output_path.resolve().as_posix()
             session.machine.save_settings()
