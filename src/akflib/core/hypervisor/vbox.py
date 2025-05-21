@@ -787,9 +787,9 @@ class VBoxHypervisor(HypervisorABC):
             adapter_id = adapter.slot
 
         logger.info(f"Stopping network capture on adapter {adapter_id}")
-        adapter = self.machine.get_network_adapter(adapter_id)
 
         with TemporarySession(self.machine) as session:
+            adapter = session.machine.get_network_adapter(adapter_id)
             adapter.trace_enabled = False
             session.machine.save_settings()
 
