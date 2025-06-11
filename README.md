@@ -1,4 +1,3 @@
-This is a template.
+The core libraries for the automated kinetic framework (AKF), a tool for building educational and research datasets in digital forensics.
 
-## TODO
-- Remove agent-specific requirements from the AKF repo (e.g. Playwright)
+For examples of using this library to create Windows datasets, see [the AKF Windows agent](https://github.com/lgactna/akf-windows).
