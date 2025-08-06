@@ -24,7 +24,7 @@ class VBoxCreateModule(AKFModule[VBoxCreateModuleArgs, NullConfig]):
     Instantiate a new VBoxHypervisor object and add it to the state dictionary.
     """
 
-    aliases = ["vbox_start"]
+    aliases = ["vbox_start", "vbox_init"]
     arg_model = VBoxCreateModuleArgs
     config_model = NullConfig
 
@@ -85,7 +85,7 @@ class VBoxStartMachineModule(AKFModule[VBoxStartMachineModuleArgs, NullConfig]):
     Start the virtual machine associated with the VBoxHypervisor object.
     """
 
-    aliases = ["vbox_start_machine"]
+    aliases = ["vbox_start_machine", "vbox_start_vm"]
     arg_model = VBoxStartMachineModuleArgs
     config_model = NullConfig
 
@@ -137,7 +137,7 @@ class VBoxStopMachineModule(AKFModule[VBoxStopMachineModuleArgs, NullConfig]):
     Stop the virtual machine associated with the VBoxHypervisor object.
     """
 
-    aliases = ["vbox_stop_machine"]
+    aliases = ["vbox_stop_machine", "vbox_stop_vm"]
     arg_model = VBoxStopMachineModuleArgs
     config_model = NullConfig
 
